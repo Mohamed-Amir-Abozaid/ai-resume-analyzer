@@ -1,0 +1,1392 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <meta
+    name="description"
+    content="AI-powered resume analysis and career guidance."
+  >
+
+  <title>ResumePilot — AI Resume Analyzer</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+  <link
+    href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap"
+    rel="stylesheet"
+  >
+
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+  <!-- =========================
+       AUTHENTICATION
+  ========================== -->
+
+  <section class="auth-shell" id="auth-shell">
+
+    <div class="auth-visual">
+
+      <a class="brand light-brand" href="#">
+        <span class="brand-mark">R</span>
+        <span>
+          Resume<span class="brand-accent">Pilot</span>
+        </span>
+      </a>
+
+      <div class="visual-copy">
+
+        <p class="eyebrow light-eyebrow">
+          YOUR CAREER, IN FOCUS
+        </p>
+
+        <h1>
+          Make your next move <em>meaningful.</em>
+        </h1>
+
+        <p>
+          Turn your experience into a clearer story,
+          stronger applications, and the roles that fit
+          your ambition.
+        </p>
+
+      </div>
+
+      <div class="orbit orbit-one"></div>
+      <div class="orbit orbit-two"></div>
+
+      <div class="signal-card">
+        <span class="signal-dot"></span>
+        <span>AI career intelligence</span>
+        <strong>Ready when you are.</strong>
+      </div>
+
+      <p class="visual-footer">
+        Built for thoughtful career moves
+        <span>+</span>
+        backed by your experience
+      </p>
+
+    </div>
+
+
+    <div class="auth-panel">
+
+      <div class="auth-panel-top">
+        <span>Already have an account?</span>
+
+        <button
+          class="text-button auth-switch"
+          data-auth-mode="login"
+        >
+          Log in
+        </button>
+      </div>
+
+
+      <div class="auth-form-wrap">
+
+        <p class="eyebrow">
+          WELCOME TO RESUMEPILOT
+        </p>
+
+        <h2 id="auth-title">
+          Create your account
+        </h2>
+
+        <p
+          class="auth-subtitle"
+          id="auth-subtitle"
+        >
+          Your personalized career workspace starts here.
+        </p>
+
+
+        <div class="auth-tabs" role="tablist">
+
+          <button
+            class="auth-tab active"
+            data-auth-mode="register"
+          >
+            Register
+          </button>
+
+          <button
+            class="auth-tab"
+            data-auth-mode="login"
+          >
+            Log in
+          </button>
+
+        </div>
+
+
+        <form id="auth-form">
+
+          <div
+            class="field-group"
+            id="name-field"
+          >
+
+            <label for="full-name">
+              Full name
+            </label>
+
+            <input
+              id="full-name"
+              name="name"
+              type="text"
+              placeholder="e.g. Amir Mohamed"
+              autocomplete="name"
+            >
+
+          </div>
+
+
+          <div class="field-group">
+
+            <label for="email">
+              Email address
+            </label>
+
+            <input
+              id="email"
+              name="email"
+              type="email"
+              placeholder="you@example.com"
+              autocomplete="email"
+              required
+            >
+
+          </div>
+
+
+          <div class="field-group">
+
+            <label for="password">
+              Password
+            </label>
+
+            <div class="password-field">
+
+              <input
+                id="password"
+                name="password"
+                type="password"
+                placeholder="At least 8 characters"
+                minlength="8"
+                autocomplete="new-password"
+                required
+              >
+
+              <button
+                type="button"
+                class="password-toggle"
+                aria-label="Show password"
+                data-action="password"
+              >
+                Show
+              </button>
+
+            </div>
+
+          </div>
+
+
+          <label
+            class="check-row"
+            id="terms-row"
+          >
+
+            <input
+              type="checkbox"
+              required
+            >
+
+            <span>
+              I agree to the
+              <a href="#">Terms of Service</a>
+              and
+              <a href="#">Privacy Policy</a>.
+            </span>
+
+          </label>
+
+
+          <button
+            class="button button-primary auth-submit"
+            type="submit"
+          >
+
+            <span id="auth-submit-label">
+              Create account
+            </span>
+
+            <span>→</span>
+
+          </button>
+
+        </form>
+
+
+        <p
+          class="auth-footnote"
+          id="auth-footnote"
+        >
+          Already registered?
+
+          <button
+            class="text-button"
+            data-auth-mode="login"
+          >
+            Log in instead
+          </button>
+
+        </p>
+
+      </div>
+
+
+      <p class="auth-legal">
+        Your data stays yours. ResumePilot uses your
+        information only to improve your career recommendations.
+      </p>
+
+    </div>
+
+  </section>
+
+
+
+  <!-- =========================
+       MAIN APPLICATION
+  ========================== -->
+
+  <section
+    class="app-shell hidden"
+    id="app-shell"
+  >
+
+    <!-- SIDEBAR -->
+
+    <aside
+      class="sidebar"
+      id="sidebar"
+    >
+
+      <a
+        class="brand"
+        href="#overview"
+      >
+
+        <span class="brand-mark">
+          R
+        </span>
+
+        <span>
+          Resume<span class="brand-accent">Pilot</span>
+        </span>
+
+      </a>
+
+
+      <div class="workspace-label">
+        WORKSPACE
+      </div>
+
+
+      <nav
+        class="primary-nav"
+        aria-label="Main navigation"
+      >
+
+        <a
+          class="nav-item active"
+          href="#overview"
+          data-view="overview"
+        >
+          <span>◆</span>
+          Overview
+        </a>
+
+
+        <a
+          class="nav-item"
+          href="#analysis"
+          data-view="analysis"
+        >
+          <span>◇</span>
+          Resume analysis
+        </a>
+
+
+        <a
+          class="nav-item"
+          href="#resumes"
+          data-view="resumes"
+        >
+          <span>▤</span>
+          My resumes
+        </a>
+
+
+        <a
+          class="nav-item"
+          href="#jobs"
+          data-view="jobs"
+        >
+          <span>▱</span>
+          Job explorer
+        </a>
+
+
+        <a
+          class="nav-item"
+          href="#improvement"
+          data-view="improvement"
+        >
+          <span>↗</span>
+          Improve resume
+        </a>
+
+      </nav>
+
+
+      <div class="sidebar-spacer"></div>
+
+
+      <div class="advisor-card">
+
+        <span class="pro-kicker">
+          CAREER ADVISOR
+        </span>
+
+        <strong>
+          Your next chapter starts with a question.
+        </strong>
+
+        <button
+          class="text-button"
+          data-action="advisor"
+        >
+          Ask your advisor →
+        </button>
+
+      </div>
+
+
+      <div class="profile-row">
+
+        <div
+          class="avatar"
+          id="profile-avatar"
+        >
+          AM
+        </div>
+
+        <div>
+
+          <strong id="profile-name">
+            Amir Mohamed
+          </strong>
+
+          <span>
+            Job seeker
+          </span>
+
+        </div>
+
+
+        <button
+          class="icon-button"
+          aria-label="Log out"
+          data-action="logout"
+        >
+          ↪
+        </button>
+
+      </div>
+
+    </aside>
+
+
+
+    <!-- MAIN -->
+
+    <main class="main-content">
+
+      <header class="topbar">
+
+        <button
+          class="menu-button icon-button"
+          aria-label="Toggle navigation"
+          data-action="menu"
+        >
+          ☰
+        </button>
+
+
+        <div class="breadcrumb">
+
+          <span>
+            Workspace
+          </span>
+
+          <span>
+            /
+          </span>
+
+          <strong id="breadcrumb-title">
+            Overview
+          </strong>
+
+        </div>
+
+
+        <div class="topbar-actions">
+
+          <button
+            class="icon-button"
+            aria-label="Notifications"
+            data-action="notifications"
+          >
+            ◌
+          </button>
+
+          <button
+            class="help-button"
+            data-action="help"
+          >
+            Need help?
+          </button>
+
+        </div>
+
+      </header>
+
+
+
+      <div class="content-wrap">
+
+        <!-- =========================
+             OVERVIEW
+        ========================== -->
+
+        <section
+          class="view active-view"
+          data-section="overview"
+        >
+
+          <div class="page-heading">
+
+            <div>
+
+              <p class="eyebrow">
+                YOUR CAREER WORKSPACE
+              </p>
+
+              <h1>
+                Welcome,
+                <span id="welcome-name">
+                  Amir
+                </span>
+                <span class="heading-dot">
+                  .
+                </span>
+              </h1>
+
+              <p class="heading-copy">
+                Your insights will appear here after
+                your first resume upload.
+              </p>
+
+            </div>
+
+
+            <button
+              class="button button-primary"
+              data-action="upload"
+            >
+              + Upload resume
+            </button>
+
+          </div>
+
+
+          <div class="empty-hero panel">
+
+            <div class="empty-hero-copy">
+
+              <span class="status-pill">
+                <i></i>
+                AI workspace ready
+              </span>
+
+              <h2>
+                Start with your resume
+              </h2>
+
+              <p>
+                Upload your latest CV and ResumePilot
+                will extract your experience, skills,
+                education, and career signals.
+                Then it will match you with relevant
+                opportunities.
+              </p>
+
+              <button
+                class="button button-primary"
+                data-action="upload"
+              >
+                Choose a PDF or DOCX
+                <span>↗</span>
+              </button>
+
+              <small>
+                Maximum file size: 10 MB
+              </small>
+
+            </div>
+
+
+            <div class="empty-visual">
+
+              <div class="scan-ring">
+                <span>+</span>
+              </div>
+
+              <div class="floating-chip chip-top">
+                Skills
+                <b>—</b>
+              </div>
+
+              <div class="floating-chip chip-bottom">
+                Career fit
+                <b>—</b>
+              </div>
+
+            </div>
+
+
+            <input
+              type="file"
+              id="resume-input"
+              accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              hidden
+            >
+
+          </div>
+
+
+          <div class="empty-metrics">
+
+            <article class="metric-card">
+
+              <span>
+                Resume status
+              </span>
+
+              <strong>
+                —
+              </strong>
+
+              <p>
+                Upload a CV to begin
+              </p>
+
+            </article>
+
+
+            <article class="metric-card">
+
+              <span>
+                Resume score
+              </span>
+
+              <strong>
+                —
+              </strong>
+
+              <p>
+                Calculated after analysis
+              </p>
+
+            </article>
+
+
+            <article class="metric-card">
+
+              <span>
+                Job fit
+              </span>
+
+              <strong>
+                —
+              </strong>
+
+              <p>
+                Based on suitability decisions
+              </p>
+
+            </article>
+
+
+            <article class="metric-card">
+
+              <span>
+                Skills
+              </span>
+
+              <strong>
+                —
+              </strong>
+
+              <p>
+                Extracted from your CV
+              </p>
+
+            </article>
+
+          </div>
+
+
+          <div class="lower-grid">
+
+            <section class="panel quiet-panel">
+
+              <p class="eyebrow">
+                RECENT ANALYSES
+              </p>
+
+              <h2>
+                Your analysis history is empty
+              </h2>
+
+              <p>
+                Every resume version you analyze will
+                be saved here so you can track your
+                progress over time.
+              </p>
+
+              <button
+                class="link-button"
+                data-view-link="analysis"
+              >
+                Go to resume analysis →
+              </button>
+
+            </section>
+
+
+            <section class="panel quiet-panel">
+
+              <p class="eyebrow">
+                JOB RECOMMENDATIONS
+              </p>
+
+              <h2>
+                Personalized matches are waiting
+              </h2>
+
+              <p>
+                Upload your CV to unlock job matches,
+                suitability decisions, and clear explanations
+                for each recommendation.
+              </p>
+
+              <button
+                class="link-button"
+                data-view-link="jobs"
+              >
+                Explore job matching →
+              </button>
+
+            </section>
+
+          </div>
+
+        </section>
+
+
+
+        <!-- =========================
+             RESUME ANALYSIS
+        ========================== -->
+
+        <section
+          class="view"
+          data-section="analysis"
+        >
+
+          <div class="standalone-heading">
+
+            <p class="eyebrow">
+              RESUME ANALYSIS
+            </p>
+
+            <h1>
+              Understand your edge.
+            </h1>
+
+            <p>
+              Upload your resume to extract your profile
+              and get an actionable review from the AI agents.
+            </p>
+
+            <button
+              class="button button-primary"
+              data-action="upload"
+            >
+              + Upload resume
+            </button>
+
+          </div>
+
+
+          <div
+            class="analysis-result"
+            id="analysis-result"
+            hidden
+          >
+
+            <div class="panel">
+
+              <p class="eyebrow">
+                AI SUMMARY
+              </p>
+
+              <h2 id="resume-summary">
+              </h2>
+
+            </div>
+
+
+            <div class="analysis-grid">
+
+              <div class="panel">
+
+                <p class="eyebrow">
+                  TECHNICAL SKILLS
+                </p>
+
+                <div id="technical-skills">
+                </div>
+
+              </div>
+
+
+              <div class="panel">
+
+                <p class="eyebrow">
+                  SOFT SKILLS
+                </p>
+
+                <div id="soft-skills">
+                </div>
+
+              </div>
+
+
+              <div class="panel">
+
+                <p class="eyebrow">
+                  EDUCATION
+                </p>
+
+                <div id="education">
+                </div>
+
+              </div>
+
+
+              <div class="panel">
+
+                <p class="eyebrow">
+                  EXPERIENCE
+                </p>
+
+                <div id="experience">
+                </div>
+
+              </div>
+
+
+              <div class="panel">
+
+                <p class="eyebrow">
+                  STRENGTHS
+                </p>
+
+                <div id="strengths">
+                </div>
+
+              </div>
+
+
+              <div class="panel">
+
+                <p class="eyebrow">
+                  WEAKNESSES
+                </p>
+
+                <div id="weaknesses">
+                </div>
+
+              </div>
+
+            </div>
+
+          </div>
+
+
+          <div
+            class="empty-state"
+            id="analysis-empty"
+          >
+
+            <span class="empty-icon">
+              ◇
+            </span>
+
+            <h2>
+              No resume analyzed yet
+            </h2>
+
+            <p>
+              Your summary, skills, education,
+              experience, strengths, and weaknesses
+              will appear here after upload.
+            </p>
+
+          </div>
+
+        </section>
+
+
+
+        <!-- =========================
+             MY RESUMES
+        ========================== -->
+
+        <section
+          class="view"
+          data-section="resumes"
+        >
+
+          <div class="standalone-heading">
+
+            <p class="eyebrow">
+              YOUR DOCUMENTS
+            </p>
+
+            <h1>
+              My resumes.
+            </h1>
+
+            <p>
+              Keep track of every resume version you have analyzed.
+            </p>
+
+            <button
+              class="button button-primary"
+              data-action="upload"
+            >
+              + Upload resume
+            </button>
+
+          </div>
+
+          <div
+            id="resumes-container"
+            class="resume-library"
+          >
+            <p class="loading-copy">Loading your resumes...</p>
+          </div>
+
+        </section>
+
+
+
+        <!-- =========================
+             JOB EXPLORER
+        ========================== -->
+
+        <section
+          class="view"
+          data-section="jobs"
+        >
+
+          <div class="standalone-heading">
+
+            <p class="eyebrow">
+              JOB EXPLORER
+            </p>
+
+            <h1>
+              Find a role that fits.
+            </h1>
+
+            <p>
+              Search, view, and manage available
+              job opportunities.
+            </p>
+
+
+            <div class="jobs-toolbar">
+
+              <div class="search-bar">
+
+                <span>
+                  ⌕
+                </span>
+
+                <input
+                  type="search"
+                  id="job-search"
+                  placeholder="Search roles, skills, or locations"
+                >
+
+                <button
+                  class="button button-primary"
+                  id="job-search-button"
+                >
+                  Search
+                </button>
+
+              </div>
+
+
+              <button
+                class="button button-secondary"
+                data-action="add-job"
+              >
+                + Add job
+              </button>
+
+            </div>
+
+          </div>
+
+
+          <div class="job-management panel">
+
+            <div class="panel-heading">
+
+              <div>
+
+                <p class="eyebrow">
+                  AVAILABLE JOBS
+                </p>
+
+                <h2 id="jobs-title">
+                  Loading jobs...
+                </h2>
+
+              </div>
+
+
+              <span class="status-pill">
+                Job Management
+              </span>
+
+            </div>
+
+
+            <div
+              id="jobs-container"
+              class="jobs-container"
+            >
+
+              <p>
+                Loading jobs...
+              </p>
+
+            </div>
+
+          </div>
+
+        </section>
+
+
+
+        <!-- =========================
+             JOB DETAILS
+        ========================== -->
+
+        <section
+          class="view"
+          data-section="job-detail"
+        >
+
+          <button
+            class="back-link"
+            data-view-link="jobs"
+          >
+            <span>←</span>
+            Back to job explorer
+          </button>
+
+          <div
+            id="job-detail-loading"
+            class="job-detail-loading"
+          >
+            Loading job match...
+          </div>
+
+          <div
+            id="job-detail-result"
+            class="job-detail-result"
+            hidden
+          >
+
+            <div class="job-detail-heading">
+
+              <div>
+                <p class="eyebrow">JOB MATCH</p>
+                <h1 id="job-detail-title">Job title</h1>
+                <p id="job-detail-meta" class="job-detail-meta"></p>
+              </div>
+
+              <div class="suitability-status" id="suitability-status">
+                <strong id="suitability-label">Needs development</strong>
+                <span>career fit</span>
+              </div>
+
+              <div class="match-score" aria-label="Match score">
+                <strong id="match-score">0%</strong>
+                <span>skill match</span>
+              </div>
+
+            </div>
+
+            <div class="match-explanation panel">
+              <p class="eyebrow">WHY THIS MATCH</p>
+              <p id="match-explanation-text"></p>
+            </div>
+
+            <div class="match-columns">
+              <div class="match-list panel">
+                <h2>Matched skills</h2>
+                <div id="matched-skills" class="skill-tags"></div>
+              </div>
+
+              <div class="match-list panel">
+                <h2>Missing skills</h2>
+                <div id="missing-skills" class="skill-tags"></div>
+              </div>
+
+              <div class="match-list panel">
+                <h2>Preferred matches</h2>
+                <div id="preferred-matched-skills" class="skill-tags"></div>
+              </div>
+
+              <div class="match-list panel improvement-list">
+                <h2>How to become suitable</h2>
+                <div id="improvement-plan" class="improvement-plan"></div>
+              </div>
+            </div>
+
+          </div>
+
+        </section>
+
+
+
+        <!-- =========================
+             CAREER ADVISOR
+        ========================== -->
+
+        <section
+          class="view"
+          data-section="improvement"
+        >
+
+          <div class="standalone-heading">
+
+            <p class="eyebrow">
+              CAREER ADVISOR
+            </p>
+
+            <h1>
+              Turn gaps into momentum.
+            </h1>
+
+            <p>
+              Your missing skills, learning resources,
+              certifications, and resume improvements
+              will appear here.
+            </p>
+
+            <button
+              class="button button-primary"
+              data-action="advisor"
+            >
+              Ask your advisor
+            </button>
+
+          </div>
+
+
+          <div
+            id="career-advisor-loading"
+            class="advisor-loading"
+          >
+            Preparing your personalized improvement plan...
+          </div>
+
+          <div
+            id="career-advisor-empty"
+            class="empty-state"
+            hidden
+          >
+            <span class="empty-icon">↗</span>
+            <h2>Upload a resume to start</h2>
+            <p>
+              Complete a resume analysis to unlock your personalized roadmap.
+            </p>
+          </div>
+
+          <div
+            id="career-advisor-result"
+            class="advisor-dashboard"
+            hidden
+          >
+            <div class="panel advisor-main-card">
+              <p class="eyebrow">CAREER ADVISOR AGENT</p>
+              <h2>Your next steps</h2>
+              <p id="career-advice-text"></p>
+            </div>
+
+            <div class="advisor-columns">
+              <div class="panel advisor-info-card">
+                <p class="eyebrow">SKILLS TO BUILD</p>
+                <h2>Priority gaps</h2>
+                <div id="career-missing-skills" class="skill-tags"></div>
+              </div>
+
+              <div class="panel advisor-info-card">
+                <p class="eyebrow">YOUR ROADMAP</p>
+                <h2>Practical actions</h2>
+                <div id="career-roadmap" class="advisor-list"></div>
+              </div>
+
+              <div class="panel advisor-info-card">
+                <p class="eyebrow">LEARNING RESOURCES</p>
+                <h2>Certifications</h2>
+                <div id="career-certifications" class="advisor-list"></div>
+              </div>
+
+              <div class="panel advisor-info-card">
+                <p class="eyebrow">RESUME IMPROVEMENTS</p>
+                <h2>Strengthen your profile</h2>
+                <div id="career-resume-improvements" class="advisor-list"></div>
+              </div>
+            </div>
+          </div>
+
+        </section>
+
+      </div>
+
+    </main>
+
+  </section>
+
+
+
+  <!-- =========================
+       TOAST
+  ========================== -->
+
+  <div
+    class="toast"
+    id="toast"
+    role="status"
+    aria-live="polite"
+  >
+
+    <span>
+      ✓
+    </span>
+
+    <span id="toast-message">
+      Ready when you are.
+    </span>
+
+  </div>
+
+
+
+  <!-- =========================
+       CAREER ADVISOR MODAL
+  ========================== -->
+
+  <div
+    class="modal-backdrop"
+    id="modal-backdrop"
+    hidden
+  >
+
+    <div
+      class="modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-title"
+    >
+
+      <button
+        class="modal-close icon-button"
+        aria-label="Close"
+        data-action="close-modal"
+      >
+        ×
+      </button>
+
+
+      <p class="eyebrow">
+        AI CAREER ADVISOR
+      </p>
+
+      <h2 id="modal-title">
+        What would you like to work on?
+      </h2>
+
+      <p>
+        Ask a question about your resume,
+        target role, or next learning step.
+      </p>
+
+
+      <textarea
+        placeholder="e.g. What skills am I missing for a product designer role?"
+      ></textarea>
+
+      <div
+        id="advisor-result"
+        class="advisor-result"
+        hidden
+      ></div>
+
+
+      <button
+        class="button button-primary full-width"
+        data-action="send-advisor"
+      >
+        Get advice →
+      </button>
+
+    </div>
+
+  </div>
+
+
+
+  <!-- =========================
+       ADD JOB MODAL
+  ========================== -->
+
+  <div
+    class="modal-backdrop"
+    id="job-modal-backdrop"
+    hidden
+  >
+
+    <div
+      class="modal job-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="job-modal-title"
+    >
+
+      <button
+        class="modal-close icon-button"
+        aria-label="Close"
+        data-action="close-job-modal"
+      >
+        ×
+      </button>
+
+      <p class="eyebrow">JOB MANAGEMENT</p>
+
+      <h2 id="job-modal-title">Add a job opportunity</h2>
+
+      <p>
+        Add the role details below. The AI will extract and organize
+        the required skills from the description.
+      </p>
+
+      <div class="job-instructions">
+        <strong>How to add it correctly</strong>
+        <span>Use a clear title and company name.</span>
+        <span>Paste the complete job description, including responsibilities and requirements.</span>
+        <span>Keep salary, location, and job type accurate so search results stay useful.</span>
+      </div>
+
+      <form id="job-form" class="job-form">
+
+        <div class="job-form-grid">
+          <label>
+            Job title
+            <input name="title" required placeholder="e.g. Senior Data Analyst">
+          </label>
+
+          <label>
+            Company
+            <input name="company" required placeholder="e.g. Acme Inc.">
+          </label>
+
+          <label>
+            Location
+            <input name="location" placeholder="e.g. Cairo / Remote">
+          </label>
+
+          <label>
+            Job type
+            <select name="job_type">
+              <option value="Full-time">Full-time</option>
+              <option value="Part-time">Part-time</option>
+              <option value="Contract">Contract</option>
+              <option value="Internship">Internship</option>
+              <option value="Freelance">Freelance</option>
+            </select>
+          </label>
+
+          <label>
+            Salary
+            <input name="salary" placeholder="e.g. $80k - $100k">
+          </label>
+
+          <label>
+            Required skills
+            <input name="required_skills" placeholder="Python, SQL, FastAPI">
+          </label>
+        </div>
+
+        <label>
+          Full job description
+          <textarea name="description" required rows="6" placeholder="Paste responsibilities, required skills, qualifications, and preferred skills..."></textarea>
+        </label>
+
+        <button class="button button-primary full-width" type="submit">
+          Add job and analyze skills →
+        </button>
+
+      </form>
+
+    </div>
+
+  </div>
+
+
+
+  <script src="script.js"></script>
+
+</body>
+
+</html>

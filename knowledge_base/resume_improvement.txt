@@ -1,0 +1,65 @@
+RESUME IMPROVEMENT GUIDELINES
+
+ATS
+
+Use clear section names such as:
+- Summary
+- Skills
+- Education
+- Experience
+- Projects
+- Certifications
+
+Avoid:
+- Excessive graphics
+- Complex tables
+- Unnecessary icons
+- Important information inside images
+
+SKILLS
+
+List technical skills clearly.
+
+Group related technologies together.
+
+Prioritize skills relevant to the target job.
+
+PROJECTS
+
+A strong project description should include:
+
+1. Problem
+2. Technologies used
+3. What was implemented
+4. Result or measurable impact
+
+Weak:
+"Built a machine learning project."
+
+Better:
+"Built a customer churn prediction system using XGBoost,
+achieving an AUC score of 0.72 and deployed the model
+through a FastAPI API."
+
+EXPERIENCE
+
+Describe responsibilities using action-oriented statements.
+
+Whenever possible include measurable results.
+
+Examples:
+- Improved model accuracy by 8%.
+- Reduced processing time by 30%.
+- Built an API serving machine learning predictions.
+
+GENERAL IMPROVEMENTS
+
+Keep the resume concise.
+
+Use consistent formatting.
+
+Highlight relevant technical skills.
+
+Tailor the resume to the target job.
+
+Remove outdated or irrelevant information.

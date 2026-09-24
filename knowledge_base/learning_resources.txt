@@ -1,0 +1,34 @@
+Python:
+
+Recommended learning topics:
+Python syntax, functions, classes, modules, error handling,
+file handling, and virtual environments.
+
+FastAPI:
+
+Recommended learning topics:
+REST APIs, HTTP methods, request validation, Pydantic,
+authentication, database integration, and API documentation.
+
+SQL:
+
+Recommended learning topics:
+SELECT, WHERE, JOIN, GROUP BY, INSERT, UPDATE, DELETE,
+indexes, and relational database design.
+
+Docker:
+
+Recommended learning topics:
+Images, containers, Dockerfiles, volumes, networks,
+Docker Compose, and container deployment.
+
+AWS:
+
+Recommended learning topics:
+EC2, S3, IAM, RDS, Lambda, networking, and deployment.
+
+Machine Learning:
+
+Recommended learning topics:
+Data preprocessing, feature engineering, supervised learning,
+classification, regression, model evaluation, and deployment.

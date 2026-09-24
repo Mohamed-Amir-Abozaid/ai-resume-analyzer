@@ -1,0 +1,77 @@
+CAREER ROADMAPS
+
+Machine Learning Engineer
+
+Core Skills:
+- Python
+- NumPy
+- Pandas
+- Scikit-learn
+- Machine Learning
+- SQL
+
+Advanced Skills:
+- Deep Learning
+- PyTorch or TensorFlow
+- NLP
+- Computer Vision
+
+Deployment Skills:
+- FastAPI
+- Docker
+- Git
+- Cloud basics
+- MLOps
+
+Recommended Learning Order:
+1. Python
+2. NumPy and Pandas
+3. SQL
+4. Machine Learning
+5. Deep Learning
+6. FastAPI
+7. Docker
+8. Cloud
+9. MLOps
+
+AI Engineer
+
+Core Skills:
+- Python
+- Machine Learning
+- Deep Learning
+- NLP
+- Transformers
+- LLMs
+
+Recommended Learning Order:
+1. Python
+2. Machine Learning
+3. Deep Learning
+4. NLP
+5. Transformers
+6. LLMs
+7. RAG
+8. Agents
+9. Deployment
+
+Data Scientist
+
+Core Skills:
+- Python
+- Pandas
+- NumPy
+- SQL
+- Statistics
+- Machine Learning
+- Data Visualization
+
+Recommended Learning Order:
+1. Python
+2. Pandas
+3. SQL
+4. Statistics
+5. Data Analysis
+6. Machine Learning
+7. Data Visualization
+8. Advanced Machine Learning

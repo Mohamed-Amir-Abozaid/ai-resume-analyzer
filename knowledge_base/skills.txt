@@ -1,0 +1,24 @@
+Python:
+Python is a general-purpose programming language widely used in
+backend development, automation, data science, machine learning,
+and artificial intelligence.
+
+FastAPI:
+FastAPI is a Python web framework used to build modern REST APIs.
+It is commonly used for backend services and AI applications.
+
+SQL:
+SQL is used to store, retrieve, filter, and manipulate data
+in relational databases.
+
+Docker:
+Docker is a containerization platform used to package applications
+and their dependencies into portable containers.
+
+AWS:
+AWS is a cloud computing platform that provides services for
+deployment, storage, databases, networking, and machine learning.
+
+Machine Learning:
+Machine Learning is a field of AI where models learn patterns
+from data to make predictions or decisions.

@@ -1,0 +1,19 @@
+AWS Cloud Practitioner:
+
+This certification introduces fundamental AWS cloud concepts,
+core services, security, pricing, and cloud architecture.
+
+AWS Solutions Architect:
+
+This certification focuses on designing secure and scalable
+applications using AWS services.
+
+Microsoft Azure Fundamentals:
+
+This certification introduces cloud concepts, Azure services,
+security, pricing, and cloud architecture.
+
+Google Cloud Digital Leader:
+
+This certification introduces fundamental Google Cloud concepts
+and cloud technology.

@@ -1,0 +1,30 @@
+Resume Summary:
+
+The summary should briefly describe the candidate's background,
+main technical skills, experience, and career direction.
+
+Technical Skills:
+
+Technical skills should be grouped clearly and should contain
+technologies that the candidate actually knows.
+
+Experience:
+
+Experience descriptions should focus on achievements and measurable
+results instead of only listing responsibilities.
+
+Projects:
+
+Projects should mention the technologies used and explain
+what problem was solved.
+
+Resume Improvements:
+
+Use clear section headings, concise bullet points,
+measurable achievements, relevant technical skills,
+and job-specific keywords.
+
+Avoid:
+
+Avoid unnecessary personal information, long paragraphs,
+irrelevant skills, spelling mistakes, and unsupported claims.
