@@ -497,140 +497,10 @@ Job Description:
     )
 
 
+
 # ============================================================
 # AI Job Matching
 # ============================================================
-
-def normalize_skill_name(skill):
-
-    normalized = str(skill).lower().strip()
-    normalized = normalized.replace("&", " and ")
-    normalized = normalized.replace("fast api", "fastapi")
-    normalized = normalized.replace("machine-learning", "machine learning")
-    normalized = normalized.replace("deep-learning", "deep learning")
-    normalized = normalized.replace("machine_learning", "machine learning")
-    normalized = normalized.replace("deep_learning", "deep learning")
-
-    aliases = {
-        "ml": "machine learning",
-        "dl": "deep learning",
-        "nlp": "natural language processing",
-        "apis": "api"
-    }
-
-    normalized = aliases.get(normalized, normalized)
-    normalized = re.sub(r"[^a-z0-9+#]+", " ", normalized)
-    normalized = re.sub(r"\s+", " ", normalized).strip()
-
-    return normalized
-
-
-def skill_matches(required_skill, candidate_skill):
-
-    required = normalize_skill_name(required_skill)
-    candidate = normalize_skill_name(candidate_skill)
-
-    if not required or not candidate:
-        return False
-
-    if required == candidate:
-        return True
-
-    if len(required) < 3 or len(candidate) < 3:
-        return False
-
-    return required in candidate or candidate in required
-
-
-def calculate_skill_match(
-    resume_skills,
-    required_skills,
-    preferred_skills
-):
-
-    matched_required = []
-    missing_required = []
-
-    for required_skill in required_skills:
-        if any(
-            skill_matches(required_skill, candidate_skill)
-            for candidate_skill in resume_skills
-        ):
-            matched_required.append(required_skill)
-        else:
-            missing_required.append(required_skill)
-
-    matched_preferred = [
-        preferred_skill
-        for preferred_skill in preferred_skills
-        if any(
-            skill_matches(preferred_skill, candidate_skill)
-            for candidate_skill in resume_skills
-        )
-    ]
-
-    required_coverage = (
-        len(matched_required) / len(required_skills) * 100
-        if required_skills
-        else 0
-    )
-
-    preferred_coverage = (
-        len(matched_preferred) / len(preferred_skills) * 100
-        if preferred_skills
-        else 0
-    )
-
-    if required_skills and preferred_skills:
-        score = required_coverage * 0.9 + preferred_coverage * 0.1
-    elif required_skills:
-        score = required_coverage
-    else:
-        score = preferred_coverage
-
-    if matched_required:
-        explanation = (
-            f"The candidate matches {len(matched_required)} of "
-            f"{len(required_skills)} required skills."
-        )
-    else:
-        explanation = "The required job skills are not present in the candidate's skills."
-
-    if missing_required:
-        explanation += (
-            " Missing skills: "
-            + ", ".join(missing_required)
-            + "."
-        )
-
-    if matched_preferred:
-        explanation += (
-            " Preferred skills matched: "
-            + ", ".join(matched_preferred)
-            + "."
-        )
-
-    is_suitable = (
-        not missing_required
-        or (
-            bool(required_skills)
-            and len(matched_required) / len(required_skills) >= 0.6
-        )
-    )
-
-    return {
-        "match_score": round(score, 2),
-        "is_suitable": is_suitable,
-        "suitability": "Suitable" if is_suitable else "Needs development",
-        "matched_skills": matched_required,
-        "missing_skills": missing_required,
-        "preferred_matched_skills": matched_preferred,
-        "improvement_plan": [
-            f"Build practical experience with {skill}."
-            for skill in missing_required
-        ],
-        "explanation": explanation
-    }
 
 def analyze_job_match(
     resume_programming_languages,
@@ -641,17 +511,8 @@ def analyze_job_match(
     preferred_technical_skills=None
 ):
     """
-    Compare resume skills with job requirements.
-
-    The LLM calculates:
-    - Match score
-    - Matched required skills
-    - Missing required skills
-    - Matched preferred skills
-    - Explanation
-
-    IMPORTANT:
-    The original matching logic is preserved.
+    Use the LLM to semantically compare candidate skills
+    with job requirements and return a structured result.
     """
 
     preferred_programming_languages = (
@@ -662,51 +523,43 @@ def analyze_job_match(
         preferred_technical_skills or []
     )
 
-    # ========================================================
-    # COMBINE SKILLS
-    # ========================================================
+    # --------------------------------------------------------
+    # Combine candidate skills
+    # --------------------------------------------------------
 
-    # Resume skills
-    programming_languages = (
-        resume_programming_languages or []
+    candidate_skills = (
+        (resume_programming_languages or [])
+        + (resume_technical_skills or [])
     )
 
-    technical_skills = (
-        resume_technical_skills or []
-    )
+    # --------------------------------------------------------
+    # Combine job skills
+    # --------------------------------------------------------
 
-    all_resume_skills = (
-        programming_languages
-        + technical_skills
-    )
-
-    # Job required skills
     required_skills = (
-        required_programming_languages
-        + required_technical_skills
+        (required_programming_languages or [])
+        + (required_technical_skills or [])
     )
 
-    # Job preferred skills
     preferred_skills = (
         preferred_programming_languages
         + preferred_technical_skills
     )
 
-    fallback_result = calculate_skill_match(
-        resume_skills=all_resume_skills,
-        required_skills=required_skills,
-        preferred_skills=preferred_skills
-    )
+    # --------------------------------------------------------
+    # LLM Prompt
+    # --------------------------------------------------------
 
     prompt = f"""
-You are the Job Suitability Agent.
+You are an expert AI Job Matching Agent.
 
-Decide whether this candidate is suitable for the job.
-Do not calculate or return a numeric score.
-Use only the supplied resume and job skills.
+Compare the candidate's skills with the job requirements.
+
+Use ONLY the information provided below.
+Do NOT invent skills.
 
 Candidate skills:
-{all_resume_skills}
+{candidate_skills}
 
 Required job skills:
 {required_skills}
@@ -714,513 +567,175 @@ Required job skills:
 Preferred job skills:
 {preferred_skills}
 
-Return ONLY valid JSON in this exact shape:
-{{
-  "is_suitable": true,
-  "suitability": "Suitable",
-  "matched_skills": [],
-  "missing_skills": [],
-  "improvement_plan": [],
-  "explanation": ""
-}}
+Your tasks:
 
-The suitability value must be either "Suitable" or "Needs development".
-The improvement_plan must contain practical actions for missing skills.
-"""
+1. Identify which required skills the candidate has.
 
-    try:
-        llm_result = parse_json(generate_text(prompt))
+2. Identify which required skills are missing.
 
-        suitability = llm_result.get(
-            "suitability",
-            "Suitable" if llm_result.get("is_suitable") else "Needs development"
-        )
+3. Identify which preferred skills the candidate has.
 
-        if suitability not in ["Suitable", "Needs development"]:
-            suitability = (
-                "Suitable"
-                if llm_result.get("is_suitable")
-                else "Needs development"
-            )
-
-        is_suitable = suitability == "Suitable"
-
-        improvement_plan = llm_result.get(
-            "improvement_plan",
-            fallback_result["improvement_plan"]
-        )
-
-        if isinstance(improvement_plan, str):
-            improvement_plan = [improvement_plan]
-
-        if not isinstance(improvement_plan, list):
-            improvement_plan = fallback_result["improvement_plan"]
-
-        return {
-            "match_score": fallback_result["match_score"],
-            "is_suitable": is_suitable,
-            "suitability": suitability,
-            "matched_skills": fallback_result["matched_skills"],
-            "missing_skills": fallback_result["missing_skills"],
-            "preferred_matched_skills": fallback_result[
-                "preferred_matched_skills"
-            ],
-            "improvement_plan": improvement_plan,
-            "explanation": llm_result.get(
-                "explanation",
-                fallback_result["explanation"]
-            )
-        }
-    except Exception as error:
-        print(f"Suitability Agent failed: {error}")
-        return fallback_result
-
-    # ========================================================
-    # DEBUG INPUT
-    # ========================================================
-
-    print("\n")
-    print("=" * 70)
-    print("                 JOB MATCH DEBUG")
-    print("=" * 70)
-
-    print("\n[1] RESUME PROGRAMMING LANGUAGES:")
-    print(programming_languages)
-
-    print("\n[2] RESUME TECHNICAL SKILLS:")
-    print(technical_skills)
-
-    print("\n[3] ALL RESUME SKILLS:")
-    print(all_resume_skills)
-
-    print("\n[4] REQUIRED PROGRAMMING LANGUAGES:")
-    print(required_programming_languages)
-
-    print("\n[5] REQUIRED TECHNICAL SKILLS:")
-    print(required_technical_skills)
-
-    print("\n[6] ALL REQUIRED SKILLS:")
-    print(required_skills)
-
-    print("\n[7] PREFERRED PROGRAMMING LANGUAGES:")
-    print(preferred_programming_languages)
-
-    print("\n[8] PREFERRED TECHNICAL SKILLS:")
-    print(preferred_technical_skills)
-
-    print("\n[9] ALL PREFERRED SKILLS:")
-    print(preferred_skills)
-
-    print("\n[10] COUNTS:")
-
-    print(
-        f"Resume programming languages: "
-        f"{len(programming_languages)}"
-    )
-
-    print(
-        f"Resume technical skills: "
-        f"{len(technical_skills)}"
-    )
-
-    print(
-        f"All resume skills: "
-        f"{len(all_resume_skills)}"
-    )
-
-    print(
-        f"Required skills: "
-        f"{len(required_skills)}"
-    )
-
-    print(
-        f"Preferred skills: "
-        f"{len(preferred_skills)}"
-    )
-
-    # ========================================================
-    # PROMPT
-    # ========================================================
-
-    prompt = f"""
-You are an expert AI Job Matching System.
-
-Compare the candidate's resume skills with the
-job requirements.
-
-Do NOT invent skills.
-
-Use ONLY the information provided below.
-
-==================================================
-CANDIDATE PROGRAMMING LANGUAGES
-==================================================
-
-{programming_languages}
-
-==================================================
-CANDIDATE TECHNICAL SKILLS
-==================================================
-
-{technical_skills}
-
-==================================================
-ALL CANDIDATE SKILLS
-==================================================
-
-{all_resume_skills}
-
-==================================================
-REQUIRED JOB PROGRAMMING LANGUAGES
-==================================================
-
-{required_programming_languages}
-
-==================================================
-REQUIRED JOB TECHNICAL SKILLS
-==================================================
-
-{required_technical_skills}
-
-==================================================
-ALL REQUIRED JOB SKILLS
-==================================================
-
-{required_skills}
-
-==================================================
-PREFERRED JOB PROGRAMMING LANGUAGES
-==================================================
-
-{preferred_programming_languages}
-
-==================================================
-PREFERRED JOB TECHNICAL SKILLS
-==================================================
-
-{preferred_technical_skills}
-
-==================================================
-ALL PREFERRED JOB SKILLS
-==================================================
-
-{preferred_skills}
-
-==================================================
-MATCHING RULES
-==================================================
-
-1. MATCHED REQUIRED SKILLS
-
-Return required job skills that are present
-in the candidate's skills.
-
-2. MISSING REQUIRED SKILLS
-
-Return required job skills that are not present
-in the candidate's skills.
-
-3. MATCHED PREFERRED SKILLS
-
-Return preferred skills that are present
-in the candidate's skills.
-
-4. PROGRAMMING LANGUAGES
-
-Programming languages must be matched normally.
-
-For example:
-
-Candidate:
-Python
-
-Job:
-Python
-
-Result:
-
-Python -> matched
-
-5. SKILL NORMALIZATION
-
-Understand obvious variations.
+4. Understand obvious skill variations and synonyms.
 
 Examples:
+- ML = Machine Learning
+- DL = Deep Learning
+- NLP = Natural Language Processing
+- machine-learning = Machine Learning
+- machine_learning = Machine Learning
+- deep-learning = Deep Learning
+- deep_learning = Deep Learning
+- Fast API = FastAPI
 
-ML = Machine Learning
+5. Do NOT make automatic assumptions.
 
-machine-learning = Machine Learning
+Examples:
+- Python does NOT mean Django.
+- Python does NOT mean FastAPI.
+- GitHub does NOT automatically mean Git.
+- Machine Learning does NOT automatically mean Deep Learning.
+- TensorFlow does NOT automatically mean Python.
 
-machine_learning = Machine Learning
+6. Calculate match_score from 0 to 100.
 
-DL = Deep Learning
-
-deep-learning = Deep Learning
-
-deep_learning = Deep Learning
-
-Fast API = FastAPI
-
-6. DO NOT MAKE UNRELATED MATCHES
-
-GitHub is NOT automatically Git.
-
-Python is NOT automatically Django.
-
-Machine Learning is NOT automatically Deep Learning.
-
-TensorFlow is NOT automatically Python.
-
-PyTorch is NOT automatically Python.
-
-7. MATCH SCORE
-
-Calculate a score from 0 to 100.
+Use this principle:
 
 Required skills are the main factor.
+Preferred skills are a secondary factor.
 
-Preferred skills are secondary.
+Required skill coverage:
 
-The score must reflect the actual matching result.
+matched required skills / total required skills * 100
 
-The score MUST be consistent with:
+Preferred skills may increase the final score,
+but they must have less influence than required skills.
 
-matched_skills
+The score must be consistent with the matched
+and missing skills.
 
-missing_skills
+7. suitability:
 
-required_skills
+Return "Suitable" when the candidate satisfies
+most of the required skills.
 
-If 4 out of 7 required skills match,
-the required skill coverage is approximately:
+Otherwise return "Needs development".
 
-4 / 7 * 100 = 57.14%
+8. improvement_plan:
 
-Preferred skills can improve the score slightly.
+For every missing required skill, provide
+one practical improvement action.
 
-If at least one required skill is matched,
-DO NOT return a score of 0.
+9. explanation:
 
-8. EXPLANATION
-
-Give a short professional explanation.
-
-The explanation must agree with:
-- match_score
-- matched_skills
-- missing_skills
-- preferred_matched_skills
-
-==================================================
-IMPORTANT
-==================================================
-
-Do not invent skills.
-
-Do not add skills that are not present.
-
-matched_skills must contain only required job skills.
-
-missing_skills must contain only required job skills.
-
-preferred_matched_skills must contain only preferred job skills.
-
-match_score must be a number from 0 to 100.
+Give a short explanation that is consistent with
+the returned score and matching results.
 
 Return ONLY valid JSON.
 
-Do not use Markdown.
-
-Do not add ```json.
-
-Return exactly:
+Return exactly this structure:
 
 {{
     "match_score": 0,
+    "is_suitable": false,
+    "suitability": "Needs development",
     "matched_skills": [],
     "missing_skills": [],
     "preferred_matched_skills": [],
+    "improvement_plan": [],
     "explanation": ""
 }}
 """
 
-    # ========================================================
-    # CALL LLM
-    # ========================================================
-
-    response = generate_text(
-        prompt
-    )
-
-    print("\n[11] RAW LLM RESPONSE:")
-    print(response)
-
-    # ========================================================
-    # PARSE RESPONSE
-    # ========================================================
-
-    result = parse_json(
-        response
-    )
-
-    print("\n[12] PARSED RESULT:")
-    print(result)
-
-    # ========================================================
-    # SCORE
-    # ========================================================
-
     try:
+        response = generate_text(prompt)
 
-        score = float(
-            result.get(
-                "match_score",
-                0
-            )
+        result = parse_json(response)
+
+        # ----------------------------------------------------
+        # Validate basic structure
+        # ----------------------------------------------------
+
+        score = result.get("match_score", 0)
+
+        try:
+            score = float(score)
+        except (TypeError, ValueError):
+            score = 0
+
+        score = max(0, min(100, score))
+
+        matched_skills = result.get("matched_skills", [])
+        if not isinstance(matched_skills, list):
+            matched_skills = []
+
+        missing_skills = result.get("missing_skills", [])
+        if not isinstance(missing_skills, list):
+            missing_skills = []
+
+        preferred_matched_skills = result.get(
+            "preferred_matched_skills",
+            []
         )
 
-    except (
-        TypeError,
-        ValueError
-    ):
+        if not isinstance(preferred_matched_skills, list):
+            preferred_matched_skills = []
 
-        score = 0
+        improvement_plan = result.get(
+            "improvement_plan",
+            []
+        )
 
-    score = max(
-        0,
-        min(100, score)
-    )
+        if not isinstance(improvement_plan, list):
+            improvement_plan = []
 
-    # ========================================================
-    # MATCHED SKILLS
-    # ========================================================
+        explanation = result.get("explanation", "")
 
-    matched_skills = result.get(
-        "matched_skills",
-        []
-    )
+        if not isinstance(explanation, str):
+            explanation = ""
 
-    if not isinstance(
-        matched_skills,
-        list
-    ):
+        suitability = result.get(
+            "suitability",
+            "Suitable" if result.get("is_suitable") else "Needs development"
+        )
 
-        matched_skills = []
+        if suitability not in [
+            "Suitable",
+            "Needs development"
+        ]:
+            suitability = "Needs development"
 
-    # ========================================================
-    # MISSING SKILLS
-    # ========================================================
+        is_suitable = suitability == "Suitable"
 
-    missing_skills = result.get(
-        "missing_skills",
-        []
-    )
+        return {
+            "match_score": round(score, 2),
+            "is_suitable": is_suitable,
+            "suitability": suitability,
+            "matched_skills": matched_skills,
+            "missing_skills": missing_skills,
+            "preferred_matched_skills": preferred_matched_skills,
+            "improvement_plan": improvement_plan,
+            "explanation": explanation
+        }
 
-    if not isinstance(
-        missing_skills,
-        list
-    ):
+    except Exception as error:
+        print(f"Job Matching Agent failed: {error}")
 
-        missing_skills = []
-
-    # ========================================================
-    # PREFERRED MATCHED SKILLS
-    # ========================================================
-
-    preferred_matched_skills = result.get(
-        "preferred_matched_skills",
-        []
-    )
-
-    if not isinstance(
-        preferred_matched_skills,
-        list
-    ):
-
-        preferred_matched_skills = []
-
-    # ========================================================
-    # EXPLANATION
-    # ========================================================
-
-    explanation = result.get(
-        "explanation",
-        ""
-    )
-
-    if not isinstance(
-        explanation,
-        str
-    ):
-
-        explanation = ""
-
-    # ========================================================
-    # DEBUG SCORE
-    # ========================================================
-
-    required_count = len(
-        required_skills
-    )
-
-    matched_count = len(
-        matched_skills
-    )
-
-    coverage = (
-        matched_count
-        / required_count
-        * 100
-        if required_count
-        else 0
-    )
-
-    print("\n[13] SCORE DEBUG:")
-
-    print(
-        f"Required skills : {required_count}"
-    )
-
-    print(
-        f"Matched skills  : {matched_count}"
-    )
-
-    print(
-        f"Missing skills  : {len(missing_skills)}"
-    )
-
-    print(
-        f"Required coverage: {coverage:.2f}%"
-    )
-
-    print(
-        f"LLM match score  : {score:.2f}%"
-    )
-
-    # ========================================================
-    # FINAL RESULT
-    # ========================================================
-
-    final_result = {
-        "match_score": round(
-            score,
-            2
-        ),
-        "matched_skills": matched_skills,
-        "missing_skills": missing_skills,
-        "preferred_matched_skills": preferred_matched_skills,
-        "explanation": explanation
-    }
-
-    print("\n[14] FINAL MATCH RESULT:")
-    print(final_result)
-
-    print("\n" + "=" * 70)
-    print("              END JOB MATCH DEBUG")
-    print("=" * 70)
-    print()
-
-    return final_result
+        return {
+            "match_score": 0,
+            "is_suitable": False,
+            "suitability": "Needs development",
+            "matched_skills": [],
+            "missing_skills": required_skills,
+            "preferred_matched_skills": [],
+            "improvement_plan": [
+                f"Build practical experience with {skill}."
+                for skill in required_skills
+            ],
+            "explanation": (
+                "The job matching agent could not complete "
+                "the analysis."
+            )
+        }
 
 
 # ============================================================
