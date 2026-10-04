@@ -7,6 +7,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from database import get_db_connection
 from models import RegisterRequest, LoginRequest, JobRequest
 
+from passlib.context import CryptContext
+import bcrypt
+
+pwd_context = CryptContext(
+    schemes=["bcrypt"],
+    deprecated="auto"
+)
+
 from services import (
     extract_resume_text,
     analyze_resume,
@@ -399,6 +407,11 @@ def home():
 def register(user: RegisterRequest):
 
     connection = get_db_connection()
+    # Hash password before storing it in the database
+    hashed_password = bcrypt.hashpw(
+        user.password.encode("utf-8"),
+        bcrypt.gensalt()
+    ).decode("utf-8")
 
     try:
 
@@ -416,7 +429,7 @@ def register(user: RegisterRequest):
             (
                 user.full_name,
                 user.email,
-                user.password
+                hashed_password
             )
         )
 
@@ -449,39 +462,53 @@ def login(user: LoginRequest):
 
         cursor = connection.cursor()
 
+        # Get user by email
         cursor.execute(
             """
             SELECT
                 id,
                 full_name,
-                email
+                email,
+                password
             FROM users
             WHERE email = ?
-            AND password = ?
             """,
-            (
-                user.email,
-                user.password
-            )
+            (user.email,)
         )
 
         user_data = cursor.fetchone()
 
-        if user_data:
+        # User not found
+        if not user_data:
 
-            return {
-                "message": "User logged in successfully!",
-                "user": {
-                    "id": user_data["id"],
-                    "full_name": user_data["full_name"],
-                    "email": user_data["email"]
-                }
-            }
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid email or password."
+            )
 
-        raise HTTPException(
-            status_code=401,
-            detail="Invalid email or password."
+        # Verify entered password against stored hash
+        password_is_valid = bcrypt.checkpw(
+            user.password.encode("utf-8"),
+            user_data["password"].encode("utf-8")
         )
+
+        # Wrong password
+        if not password_is_valid:
+
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid email or password."
+            )
+
+        # Successful login
+        return {
+            "message": "User logged in successfully!",
+            "user": {
+                "id": user_data["id"],
+                "full_name": user_data["full_name"],
+                "email": user_data["email"]
+            }
+        }
 
     except HTTPException:
 
