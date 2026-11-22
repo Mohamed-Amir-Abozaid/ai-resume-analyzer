@@ -3,6 +3,8 @@ import json
 import os
 import re
 
+#from openai import OpenAI
+
 from dotenv import load_dotenv
 from pypdf import PdfReader
 from docx import Document
@@ -20,7 +22,14 @@ from sentence_transformers import SentenceTransformer
 # Configuration
 # ============================================================
 
-load_dotenv()
+# ============================================================
+# Configuration
+# ============================================================
+
+BASE_DIR = Path(__file__).resolve().parent
+ENV_PATH = BASE_DIR.parent / ".env"
+
+load_dotenv(dotenv_path=ENV_PATH)
 
 LLM_PROVIDER = os.getenv(
     "LLM_PROVIDER",
@@ -44,6 +53,7 @@ HF_MODEL = os.getenv(
     "HF_MODEL",
     "Qwen/Qwen3-0.6B"
 )
+
 
 EMBEDDING_MODEL = os.getenv(
     "EMBEDDING_MODEL",

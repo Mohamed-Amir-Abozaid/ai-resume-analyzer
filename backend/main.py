@@ -4,8 +4,9 @@ import json
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 
-from database import get_db_connection
+from database import get_db_connection, init_coach_tables
 from models import RegisterRequest, LoginRequest, JobRequest
+from routes import router as coach_router
 
 from passlib.context import CryptContext
 import bcrypt
@@ -46,6 +47,14 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"]
 )
+
+
+# ============================================================
+# Career & Interview Coach (HAI routes: /coach/*)
+# ============================================================
+
+init_coach_tables()
+app.include_router(coach_router)
 
 
 # ============================================================
