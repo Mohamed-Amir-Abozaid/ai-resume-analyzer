@@ -1,2 +1,31 @@
+﻿# Environment variables
 .env
-/uploads/*
+.env.*
+
+!.env.example
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+
+# IDE
+.vscode/
+
+# Git
+.git/
+
+# Uploaded files
+uploads/*
+!uploads/.gitkeep
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Vector database
+chroma_db/
+
+# Python cache
+.pytest_cache/

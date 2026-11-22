@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 from pypdf import PdfReader
 from docx import Document
 
-from google import genai
+from groq import Groq
 from huggingface_hub import InferenceClient
 
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -33,17 +33,8 @@ load_dotenv(dotenv_path=ENV_PATH)
 
 LLM_PROVIDER = os.getenv(
     "LLM_PROVIDER",
-    "gemini"
+    "groq"
 ).lower()
-
-GEMINI_API_KEY = os.getenv(
-    "GEMINI_API_KEY"
-)
-
-GEMINI_MODEL = os.getenv(
-    "GEMINI_MODEL",
-    "gemini-2.0-flash"
-)
 
 HF_TOKEN = os.getenv(
     "HF_TOKEN"
@@ -52,6 +43,15 @@ HF_TOKEN = os.getenv(
 HF_MODEL = os.getenv(
     "HF_MODEL",
     "Qwen/Qwen3-0.6B"
+)
+
+GROQ_API_KEY = os.getenv(
+    "GROQ_API_KEY"
+)
+
+GROQ_MODEL = os.getenv(
+    "GROQ_MODEL",
+    "llama-3.3-70b-versatile"
 )
 
 
@@ -65,22 +65,22 @@ EMBEDDING_MODEL = os.getenv(
 # LLM Clients
 # ============================================================
 
-gemini_client = None
+groq_client = None
 hf_client = None
 
 
-if LLM_PROVIDER == "gemini":
+if LLM_PROVIDER == "groq":
 
-    if not GEMINI_API_KEY:
+    if not GROQ_API_KEY:
         raise ValueError(
-            "GEMINI_API_KEY is missing."
+            "GROQ_API_KEY is missing."
         )
 
-    gemini_client = genai.Client(
-        api_key=GEMINI_API_KEY
+    groq_client = Groq(
+        api_key=GROQ_API_KEY
     )
 
-else:
+elif LLM_PROVIDER in ["huggingface", "hf"]:
 
     if not HF_TOKEN:
         raise ValueError(
@@ -91,34 +91,95 @@ else:
         api_key=HF_TOKEN
     )
 
+else:
+    raise ValueError(
+        "Invalid LLM_PROVIDER. Choose: groq or huggingface."
+    )
+
 
 # ============================================================
 # LLM Generation
 # ============================================================
 
 def generate_text(prompt: str) -> str:
+    """
+    Generate a response from the configured LLM.
+    All current callers expect JSON, so Groq is explicitly asked
+    to return JSON instead of free-form text.
+    """
 
-    if LLM_PROVIDER == "gemini":
+    if LLM_PROVIDER == "groq":
 
-        response = gemini_client.models.generate_content(
-            model=GEMINI_MODEL,
-            contents=prompt
+        response = groq_client.chat.completions.create(
+            model=GROQ_MODEL,
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You are a reliable assistant. "
+                        "When asked for structured output, return "
+                        "one valid JSON object only. Do not use "
+                        "Markdown fences or add explanations."
+                    )
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            # response_format={"type": "json_object"},
+            temperature=0,
+            max_tokens=2500
         )
 
-        return response.text.strip()
+        choice = response.choices[0]
+
+        print("\n========== GROQ DEBUG ==========")
+
+        print("Model:", response.model)
+        print("Finish Reason:", choice.finish_reason)
+        print("Content:", repr(choice.message.content))
+        print("Usage:", response.usage)
+
+        print("================================\n")
+
+        content = choice.message.content
+
+        if not content or not content.strip():
+
+            raise ValueError(
+                f"Groq returned empty content. "
+                f"Finish reason: {choice.finish_reason}"
+            )
+
+        return content.strip()
 
     response = hf_client.chat.completions.create(
         model=HF_MODEL,
         messages=[
             {
+                "role": "system",
+                "content": (
+                    "Return valid JSON only when the task requests "
+                    "JSON. Do not add Markdown fences or explanations."
+                )
+            },
+            {
                 "role": "user",
                 "content": prompt
             }
         ],
-        max_tokens=1500
+        temperature=0,
+        max_tokens=2500
     )
 
-    return response.choices[0].message.content.strip()
+    content = response.choices[0].message.content
+    if not content or not content.strip():
+        raise ValueError(
+            "The Hugging Face model returned an empty response."
+        )
+
+    return content.strip()
 
 
 # ============================================================
@@ -126,48 +187,82 @@ def generate_text(prompt: str) -> str:
 # ============================================================
 
 def parse_json(response: str):
+    """
+    Parse a JSON object returned by the LLM.
+    Handles Markdown code fences and text surrounding the JSON.
+    """
 
+    if response is None:
+        raise ValueError("LLM returned an empty response (None).")
+
+    response = str(response).strip()
+
+    if not response:
+        raise ValueError("LLM returned an empty response.")
+
+    # Remove common Markdown code fences.
+    response = re.sub(r"^```(?:json)?\\s*", "", response, flags=re.IGNORECASE)
+    response = re.sub(r"\\s*```$", "", response)
     response = response.strip()
 
-    if response.startswith("```"):
-
-        response = response.replace(
-            "```json",
-            ""
-        )
-
-        response = response.replace(
-            "```",
-            ""
-        )
-
-        response = response.strip()
-
     try:
-
-        return json.loads(response)
+        result = json.loads(response)
+        if not isinstance(result, dict):
+            raise ValueError("LLM JSON response must be a JSON object.")
+        return result
 
     except json.JSONDecodeError:
-
+        # Find the first complete JSON object, while respecting
+        # braces that may appear inside quoted strings.
         start = response.find("{")
-        end = response.rfind("}")
-
-        if start == -1 or end == -1:
+        if start == -1:
             raise ValueError(
-                "LLM did not return valid JSON."
+                "LLM did not return JSON. Response was: "
+                + response[:500]
             )
 
-        try:
+        depth = 0
+        in_string = False
+        escaped = False
 
-            return json.loads(
-                response[start:end + 1]
-            )
+        for index in range(start, len(response)):
+            char = response[index]
 
-        except json.JSONDecodeError:
+            if in_string:
+                if escaped:
+                    escaped = False
+                elif char == "\\\\":
+                    escaped = True
+                elif char == '"':
+                    in_string = False
+                continue
 
-            raise ValueError(
-                "LLM returned invalid JSON."
-            )
+            if char == '"':
+                in_string = True
+            elif char == "{":
+                depth += 1
+            elif char == "}":
+                depth -= 1
+                if depth == 0:
+                    json_text = response[start:index + 1]
+                    try:
+                        result = json.loads(json_text)
+                    except json.JSONDecodeError as error:
+                        raise ValueError(
+                            f"LLM returned malformed JSON: {error}. "
+                            f"Response was: {response[:500]}"
+                        ) from error
+
+                    if not isinstance(result, dict):
+                        raise ValueError(
+                            "LLM JSON response must be a JSON object."
+                        )
+                    return result
+
+        raise ValueError(
+            "LLM returned incomplete JSON. Response was: "
+            + response[:500]
+        )
 
 
 # ============================================================

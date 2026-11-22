@@ -1,22 +1,27 @@
 from pathlib import Path
 import json
 
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form
-from fastapi.middleware.cors import CORSMiddleware
-
-from database import get_db_connection, init_coach_tables
-from models import RegisterRequest, LoginRequest, JobRequest
-from routes import router as coach_router
-
-from passlib.context import CryptContext
-import bcrypt
-
-pwd_context = CryptContext(
-    schemes=["bcrypt"],
-    deprecated="auto"
+from fastapi import (
+    FastAPI,
+    HTTPException,
+    UploadFile,
+    File,
+    Form
 )
 
-from services import (
+from fastapi.middleware.cors import CORSMiddleware
+
+from .database import (
+    get_db_connection,
+    init_coach_tables,
+    add_missing_job_columns
+)
+from .models import RegisterRequest, LoginRequest, JobRequest
+from .routes import router as coach_router
+
+import bcrypt
+
+from .services import (
     extract_resume_text,
     analyze_resume,
     analyze_job,
@@ -50,19 +55,23 @@ app.add_middleware(
 
 
 # ============================================================
-# Career & Interview Coach (HAI routes: /coach/*)
+# Career & Interview Coach
 # ============================================================
 
 init_coach_tables()
+add_missing_job_columns()
 app.include_router(coach_router)
 
 
 # ============================================================
-# Upload Directory
+# Directories
 # ============================================================
 
-UPLOAD_DIR = Path("../uploads")
-UPLOAD_DIR.mkdir(exist_ok=True)
+BASE_DIR = Path(__file__).resolve().parent
+
+UPLOAD_DIR = BASE_DIR.parent / "uploads"
+
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 
 # ============================================================
@@ -99,7 +108,7 @@ PROGRAMMING_LANGUAGES = {
 
 def normalize_json_list(value):
     """
-    Safely convert database JSON fields into a Python list.
+    Safely convert JSON values into Python lists.
     """
 
     if not value:
@@ -116,11 +125,11 @@ def normalize_json_list(value):
         try:
             parsed = json.loads(value)
 
-            # Handle double encoded JSON
             if isinstance(parsed, str):
 
                 try:
                     parsed = json.loads(parsed)
+
                 except (json.JSONDecodeError, TypeError):
                     pass
 
@@ -143,7 +152,6 @@ def normalize_json_list(value):
         if not isinstance(item, str):
             continue
 
-        # Handle comma-separated strings
         parts = item.split(",")
 
         for part in parts:
@@ -156,10 +164,11 @@ def normalize_json_list(value):
     return result
 
 
+# ============================================================
+# Classify Programming Languages
+# ============================================================
+
 def classify_programming_languages(skills):
-    """
-    Separate programming languages from technical skills.
-    """
 
     programming_languages = []
     technical_skills = []
@@ -181,28 +190,11 @@ def classify_programming_languages(skills):
     return programming_languages, technical_skills
 
 
+# ============================================================
+# Parse Job Skills
+# ============================================================
+
 def parse_job_skills(required_skills_text):
-    """
-    Supports:
-
-    {
-        "required": [],
-        "preferred": []
-    }
-
-    and the extended format:
-
-    {
-        "required": [],
-        "preferred": [],
-        "required_programming_languages": [],
-        "required_technical_skills": [],
-        "preferred_programming_languages": [],
-        "preferred_technical_skills": []
-    }
-
-    Also supports old comma-separated strings.
-    """
 
     if not required_skills_text:
         return [], []
@@ -228,11 +220,11 @@ def parse_job_skills(required_skills_text):
 
         data = json.loads(required_skills_text)
 
-        # Handle double JSON encoding
         if isinstance(data, str):
 
             try:
                 data = json.loads(data)
+
             except (json.JSONDecodeError, TypeError):
                 pass
 
@@ -256,28 +248,24 @@ def parse_job_skills(required_skills_text):
     except (json.JSONDecodeError, TypeError):
         pass
 
-    # Old comma-separated format
     if isinstance(required_skills_text, str):
 
         return (
-            normalize_json_list(
-                required_skills_text
-            ),
+            normalize_json_list(required_skills_text),
             []
         )
 
     return [], []
 
 
-def parse_job_skill_categories(required_skills_text):
-    """
-    Return all job skill categories.
+# ============================================================
+# Parse Job Skill Categories
+# ============================================================
 
-    Works with the new structured JSON and
-    also supports old job records.
-    """
+def parse_job_skill_categories(required_skills_text):
 
     if not required_skills_text:
+
         return {
             "required_programming_languages": [],
             "required_technical_skills": [],
@@ -293,8 +281,10 @@ def parse_job_skill_categories(required_skills_text):
             data = json.loads(data)
 
             if isinstance(data, str):
+
                 try:
                     data = json.loads(data)
+
                 except (json.JSONDecodeError, TypeError):
                     pass
 
@@ -303,7 +293,6 @@ def parse_job_skill_categories(required_skills_text):
 
     if isinstance(data, dict):
 
-        # New structured format
         if any(
             key in data
             for key in [
@@ -348,7 +337,6 @@ def parse_job_skill_categories(required_skills_text):
                     )
             }
 
-        # Old format
         required = normalize_json_list(
             data.get("required", [])
         )
@@ -379,7 +367,6 @@ def parse_job_skill_categories(required_skills_text):
                 preferred_technical
         }
 
-    # Old comma-separated format
     skills = normalize_json_list(
         required_skills_text
     )
@@ -409,14 +396,14 @@ def home():
 
 
 # ============================================================
-# Authentication
+# Authentication - Register
 # ============================================================
 
 @app.post("/register")
 def register(user: RegisterRequest):
 
     connection = get_db_connection()
-    # Hash password before storing it in the database
+
     hashed_password = bcrypt.hashpw(
         user.password.encode("utf-8"),
         bcrypt.gensalt()
@@ -429,7 +416,7 @@ def register(user: RegisterRequest):
         cursor.execute(
             """
             INSERT INTO users (
-                full_name,
+                name,
                 email,
                 password
             )
@@ -448,9 +435,11 @@ def register(user: RegisterRequest):
             "message": "User registered successfully!"
         }
 
-    except Exception:
+    except Exception as error:
 
         connection.rollback()
+
+        print(f"Registration error: {error}")
 
         raise HTTPException(
             status_code=400,
@@ -462,6 +451,10 @@ def register(user: RegisterRequest):
         connection.close()
 
 
+# ============================================================
+# Authentication - Login
+# ============================================================
+
 @app.post("/login")
 def login(user: LoginRequest):
 
@@ -471,12 +464,11 @@ def login(user: LoginRequest):
 
         cursor = connection.cursor()
 
-        # Get user by email
         cursor.execute(
             """
             SELECT
                 id,
-                full_name,
+                name,
                 email,
                 password
             FROM users
@@ -487,7 +479,6 @@ def login(user: LoginRequest):
 
         user_data = cursor.fetchone()
 
-        # User not found
         if not user_data:
 
             raise HTTPException(
@@ -495,13 +486,11 @@ def login(user: LoginRequest):
                 detail="Invalid email or password."
             )
 
-        # Verify entered password against stored hash
         password_is_valid = bcrypt.checkpw(
             user.password.encode("utf-8"),
             user_data["password"].encode("utf-8")
         )
 
-        # Wrong password
         if not password_is_valid:
 
             raise HTTPException(
@@ -509,21 +498,22 @@ def login(user: LoginRequest):
                 detail="Invalid email or password."
             )
 
-        # Successful login
         return {
             "message": "User logged in successfully!",
+
             "user": {
                 "id": user_data["id"],
-                "full_name": user_data["full_name"],
+                "full_name": user_data["name"],
                 "email": user_data["email"]
             }
         }
 
     except HTTPException:
-
         raise
 
-    except Exception:
+    except Exception as error:
+
+        print(f"Login error: {error}")
 
         raise HTTPException(
             status_code=500,
@@ -545,154 +535,106 @@ async def upload_resume(
     file: UploadFile = File(...)
 ):
 
-    allowed_extensions = [
-        ".pdf",
-        ".docx"
-    ]
+    allowed_extensions = [".pdf", ".docx"]
 
     if not file.filename:
 
-        return {
-            "error": "File name is missing"
-        }
+        raise HTTPException(
+            status_code=400,
+            detail="File name is missing"
+        )
 
-    file_extension = Path(
-        file.filename
-    ).suffix.lower()
+    file_extension = Path(file.filename).suffix.lower()
 
     if file_extension not in allowed_extensions:
 
-        return {
-            "error": "Only PDF and DOCX files are allowed"
-        }
-
-    file_path = UPLOAD_DIR / file.filename
+        raise HTTPException(
+            status_code=400,
+            detail="Only PDF and DOCX files are allowed"
+        )
 
     file_content = await file.read()
+
+    if not file_content:
+
+        raise HTTPException(
+            status_code=400,
+            detail="Uploaded file is empty"
+        )
+
+    # Use a safe filename
+    safe_filename = Path(file.filename).name
+
+    file_path = UPLOAD_DIR / safe_filename
 
     with open(file_path, "wb") as output_file:
         output_file.write(file_content)
 
-    # Extract resume text
-    resume_text = extract_resume_text(
-        file_path
-    )
-
-    # AI Resume Analysis
-    analysis = analyze_resume(
-        resume_text
-    )
-
-    # Make sure lists exist
-    programming_languages = normalize_json_list(
-        analysis.get(
-            "programming_languages",
-            []
-        )
-    )
-
-    technical_skills = normalize_json_list(
-        analysis.get(
-            "technical_skills",
-            []
-        )
-    )
-
-    connection = get_db_connection()
-
     try:
 
-        cursor = connection.cursor()
+        # Extract resume text
+        resume_text = extract_resume_text(file_path)
 
-        cursor.execute(
-            """
-            INSERT INTO resumes (
-                user_id,
-                file_name,
-                file_path,
-                extracted_text,
-                summary,
-                programming_languages,
-                technical_skills,
-                soft_skills,
-                education,
-                experience,
-                strengths,
-                weaknesses
+        if not resume_text or not resume_text.strip():
+
+            raise HTTPException(
+                status_code=400,
+                detail="Could not extract text from resume"
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                user_id,
-                file.filename,
-                str(file_path),
-                resume_text,
 
-                analysis.get(
-                    "summary",
-                    ""
-                ),
+        # AI Resume Analysis
+        analysis = analyze_resume(resume_text)
 
-                json.dumps(
-                    programming_languages
-                ),
+        connection = get_db_connection()
 
-                json.dumps(
-                    technical_skills
-                ),
+        try:
 
-                json.dumps(
-                    analysis.get(
-                        "soft_skills",
-                        []
-                    )
-                ),
+            cursor = connection.cursor()
 
-                json.dumps(
-                    analysis.get(
-                        "education",
-                        []
-                    )
-                ),
-
-                json.dumps(
-                    analysis.get(
-                        "experience",
-                        []
-                    )
-                ),
-
-                json.dumps(
-                    analysis.get(
-                        "strengths",
-                        []
-                    )
-                ),
-
-                json.dumps(
-                    analysis.get(
-                        "weaknesses",
-                        []
-                    )
+            cursor.execute(
+                """
+                INSERT INTO resumes (
+                    user_id,
+                    filename,
+                    resume_text,
+                    summary
+                )
+                VALUES (?, ?, ?, ?)
+                """,
+                (
+                    user_id,
+                    safe_filename,
+                    resume_text,
+                    analysis.get("summary", "")
                 )
             )
-        )
 
-        connection.commit()
+            connection.commit()
 
-        resume_id = cursor.lastrowid
+            resume_id = cursor.lastrowid
 
-        return {
-            "message": "Resume uploaded successfully",
-            "resume_id": resume_id,
-            "file_name": file.filename,
-            "text_preview": resume_text[:200],
-            "analysis": analysis
-        }
+            return {
+                "message": "Resume uploaded successfully",
 
-    finally:
+                "resume_id": resume_id,
 
-        connection.close()
+                "filename": safe_filename,
+
+                "text_preview": resume_text[:200],
+
+                "analysis": analysis
+            }
+
+        finally:
+
+            connection.close()
+
+    except Exception:
+
+        if file_path.exists():
+            file_path.unlink()
+
+        raise
 
 
 # ============================================================
@@ -721,69 +663,12 @@ def get_resume(resume_id: int):
 
         if resume is None:
 
-            return {
-                "error": "Resume not found"
-            }
-
-        resume_data = dict(resume)
-
-        resume_data["programming_languages"] = (
-            normalize_json_list(
-                resume_data.get(
-                    "programming_languages"
-                )
+            raise HTTPException(
+                status_code=404,
+                detail="Resume not found"
             )
-        )
 
-        resume_data["technical_skills"] = (
-            normalize_json_list(
-                resume_data.get(
-                    "technical_skills"
-                )
-            )
-        )
-
-        resume_data["soft_skills"] = (
-            normalize_json_list(
-                resume_data.get(
-                    "soft_skills"
-                )
-            )
-        )
-
-        resume_data["education"] = (
-            normalize_json_list(
-                resume_data.get(
-                    "education"
-                )
-            )
-        )
-
-        resume_data["experience"] = (
-            normalize_json_list(
-                resume_data.get(
-                    "experience"
-                )
-            )
-        )
-
-        resume_data["strengths"] = (
-            normalize_json_list(
-                resume_data.get(
-                    "strengths"
-                )
-            )
-        )
-
-        resume_data["weaknesses"] = (
-            normalize_json_list(
-                resume_data.get(
-                    "weaknesses"
-                )
-            )
-        )
-
-        return resume_data
+        return dict(resume)
 
     finally:
 
@@ -793,112 +678,39 @@ def get_resume(resume_id: int):
 # ============================================================
 # Create Job
 # ============================================================
-
 @app.post("/jobs")
 def create_job(job: JobRequest):
 
-    # AI analyzes the job
     try:
         job_analysis = analyze_job(
             job_description=job.description,
             job_title=job.title
         )
+
     except Exception as error:
         print(f"Job AI analysis failed: {error}")
 
-        manual_required_skills = [
-            skill.strip()
-            for skill in job.required_skills.split(",")
-            if skill.strip()
-        ]
-
         job_analysis = {
-            "required_skills": manual_required_skills,
-            "preferred_skills": [],
-            "required_programming_languages": [],
-            "required_technical_skills": manual_required_skills,
-            "preferred_programming_languages": [],
-            "preferred_technical_skills": [],
-            "experience_years": 0,
-            "education": [],
-            "seniority": "",
-            "job_keywords": []
+            "required_skills": [
+                skill.strip()
+                for skill in job.required_skills.split(",")
+                if skill.strip()
+            ],
+            "preferred_skills": []
         }
 
-    required_skills = normalize_json_list(
-        job_analysis.get(
-            "required_skills",
-            []
+    skills_data = json.dumps({
+        "required": normalize_json_list(
+            job_analysis.get("required_skills", [])
+        ),
+        "preferred": normalize_json_list(
+            job_analysis.get("preferred_skills", [])
         )
-    )
-
-    preferred_skills = normalize_json_list(
-        job_analysis.get(
-            "preferred_skills",
-            []
-        )
-    )
-
-    required_programming_languages = (
-        normalize_json_list(
-            job_analysis.get(
-                "required_programming_languages",
-                []
-            )
-        )
-    )
-
-    required_technical_skills = (
-        normalize_json_list(
-            job_analysis.get(
-                "required_technical_skills",
-                []
-            )
-        )
-    )
-
-    preferred_programming_languages = (
-        normalize_json_list(
-            job_analysis.get(
-                "preferred_programming_languages",
-                []
-            )
-        )
-    )
-
-    preferred_technical_skills = (
-        normalize_json_list(
-            job_analysis.get(
-                "preferred_technical_skills",
-                []
-            )
-        )
-    )
-
-    # Store complete AI analysis
-    skills_data = json.dumps(
-        {
-            "required": required_skills,
-            "preferred": preferred_skills,
-
-            "required_programming_languages":
-                required_programming_languages,
-
-            "required_technical_skills":
-                required_technical_skills,
-
-            "preferred_programming_languages":
-                preferred_programming_languages,
-
-            "preferred_technical_skills":
-                preferred_technical_skills
-        }
-    )
+    })
 
     connection = get_db_connection()
 
     try:
-
         cursor = connection.cursor()
 
         cursor.execute(
@@ -906,9 +718,9 @@ def create_job(job: JobRequest):
             INSERT INTO jobs (
                 title,
                 company,
-                location,
                 description,
                 required_skills,
+                location,
                 salary,
                 job_type
             )
@@ -917,9 +729,9 @@ def create_job(job: JobRequest):
             (
                 job.title,
                 job.company,
-                job.location,
                 job.description,
                 skills_data,
+                job.location,
                 job.salary,
                 job.job_type
             )
@@ -934,7 +746,6 @@ def create_job(job: JobRequest):
         }
 
     finally:
-
         connection.close()
 
 
@@ -942,81 +753,52 @@ def create_job(job: JobRequest):
 # Get All Jobs
 # ============================================================
 
-@app.get("/jobs")
-def get_jobs():
+@app.get("/jobs/{job_id}")
+def get_job(job_id: int):
 
     connection = get_db_connection()
 
     try:
-
         cursor = connection.cursor()
 
         cursor.execute(
             """
             SELECT *
             FROM jobs
-            ORDER BY created_at DESC
-            """
+            WHERE id = ?
+            """,
+            (job_id,)
         )
 
-        jobs = cursor.fetchall()
+        job = cursor.fetchone()
 
-        result = []
-
-        for job in jobs:
-
-            job_data = dict(job)
-
-            categories = parse_job_skill_categories(
-                job_data.get(
-                    "required_skills"
-                )
+        if job is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Job not found"
             )
 
-            job_data["required_skills"] = (
-                normalize_json_list(
-                    parse_job_skills(
-                        job_data.get(
-                            "required_skills"
-                        )
-                    )[0]
-                )
-            )
+        job_data = dict(job)
 
-            job_data["preferred_skills"] = (
-                normalize_json_list(
-                    parse_job_skills(
-                        job_data.get(
-                            "required_skills"
-                        )
-                    )[1]
-                )
-            )
+        required, preferred = parse_job_skills(
+            job_data.get("required_skills")
+        )
 
-            job_data.update(categories)
+        job_data["required_skills"] = required
+        job_data["preferred_skills"] = preferred
 
-            result.append(job_data)
-
-        return {
-            "jobs": result
-        }
+        return job_data
 
     finally:
-
         connection.close()
-
 
 # ============================================================
 # Search Jobs
-#
-# IMPORTANT:
-# This endpoint MUST come before /jobs/{job_id}
 # ============================================================
 
 @app.get("/jobs/search")
 def search_jobs(
     title: str = "",
-    location: str = "",
     skill: str = ""
 ):
 
@@ -1044,16 +826,6 @@ def search_jobs(
                 f"%{title}%"
             )
 
-        if location:
-
-            query += """
-                AND location LIKE ?
-            """
-
-            parameters.append(
-                f"%{location}%"
-            )
-
         if skill:
 
             query += """
@@ -1065,7 +837,7 @@ def search_jobs(
             )
 
         query += """
-            ORDER BY created_at DESC
+            ORDER BY id DESC
         """
 
         cursor.execute(
@@ -1103,15 +875,12 @@ def match_resume_with_job(
 
         cursor = connection.cursor()
 
-        # ----------------------------------------------------
         # Get resume
-        # ----------------------------------------------------
-
         cursor.execute(
             """
             SELECT
-                programming_languages,
-                technical_skills
+                id,
+                resume_text
             FROM resumes
             WHERE id = ?
             """,
@@ -1122,18 +891,25 @@ def match_resume_with_job(
 
         if resume is None:
 
-            return {
-                "error": "Resume not found"
-            }
+            raise HTTPException(
+                status_code=404,
+                detail="Resume not found"
+            )
 
-        # ----------------------------------------------------
+        if not resume["resume_text"]:
+
+            raise HTTPException(
+                status_code=400,
+                detail="Resume text is empty"
+            )
+
         # Get job
-        # ----------------------------------------------------
-
         cursor.execute(
             """
             SELECT
+                id,
                 title,
+                description,
                 required_skills
             FROM jobs
             WHERE id = ?
@@ -1145,107 +921,77 @@ def match_resume_with_job(
 
         if job is None:
 
-            return {
-                "error": "Job not found"
-            }
+            raise HTTPException(
+                status_code=404,
+                detail="Job not found"
+            )
 
-        # ----------------------------------------------------
-        # Parse resume skills
-        # ----------------------------------------------------
+        # Analyze resume
+        resume_analysis = analyze_resume(
+            resume["resume_text"]
+        )
 
-        resume_programming_languages = (
-            normalize_json_list(
-                resume["programming_languages"]
+        resume_programming_languages = normalize_json_list(
+            resume_analysis.get(
+                "programming_languages",
+                []
             )
         )
 
-        resume_technical_skills = (
-            normalize_json_list(
-                resume["technical_skills"]
+        resume_technical_skills = normalize_json_list(
+            resume_analysis.get(
+                "technical_skills",
+                []
             )
         )
 
-        # ----------------------------------------------------
         # Parse job skills
-        # ----------------------------------------------------
-
         job_categories = parse_job_skill_categories(
             job["required_skills"]
         )
 
-        required_programming_languages = (
-            job_categories[
-                "required_programming_languages"
-            ]
-        )
+        required_programming_languages = job_categories[
+            "required_programming_languages"
+        ]
 
-        required_technical_skills = (
-            job_categories[
-                "required_technical_skills"
-            ]
-        )
+        required_technical_skills = job_categories[
+            "required_technical_skills"
+        ]
 
-        preferred_programming_languages = (
-            job_categories[
-                "preferred_programming_languages"
-            ]
-        )
+        preferred_programming_languages = job_categories[
+            "preferred_programming_languages"
+        ]
 
-        preferred_technical_skills = (
-            job_categories[
-                "preferred_technical_skills"
-            ]
-        )
+        preferred_technical_skills = job_categories[
+            "preferred_technical_skills"
+        ]
 
-        # ----------------------------------------------------
         # Debug
-        # ----------------------------------------------------
-
         print("\n========== MATCH DEBUG ==========")
 
-        print("\nRESUME PROGRAMMING LANGUAGES:")
-        print(
-            resume_programming_languages
-        )
+        print("RESUME PROGRAMMING LANGUAGES:")
+        print(resume_programming_languages)
 
-        print("\nRESUME TECHNICAL SKILLS:")
-        print(
-            resume_technical_skills
-        )
+        print("RESUME TECHNICAL SKILLS:")
+        print(resume_technical_skills)
 
-        print("\nREQUIRED PROGRAMMING LANGUAGES:")
-        print(
-            required_programming_languages
-        )
+        print("REQUIRED PROGRAMMING LANGUAGES:")
+        print(required_programming_languages)
 
-        print("\nREQUIRED TECHNICAL SKILLS:")
-        print(
-            required_technical_skills
-        )
+        print("REQUIRED TECHNICAL SKILLS:")
+        print(required_technical_skills)
 
-        print("\nPREFERRED PROGRAMMING LANGUAGES:")
-        print(
-            preferred_programming_languages
-        )
+        print("PREFERRED PROGRAMMING LANGUAGES:")
+        print(preferred_programming_languages)
 
-        print("\nPREFERRED TECHNICAL SKILLS:")
-        print(
-            preferred_technical_skills
-        )
+        print("PREFERRED TECHNICAL SKILLS:")
+        print(preferred_technical_skills)
 
-        print("\n=================================\n")
+        print("=================================\n")
 
-        # ----------------------------------------------------
         # AI Job Matching
-        #
-        # LLM decides suitability and recommends improvements:
-        # - matched skills
-        # - missing skills
-        # - improvement plan
-        # - explanation
-        # ----------------------------------------------------
-
         match_result = analyze_job_match(
+
             resume_programming_languages=
                 resume_programming_languages,
 
@@ -1265,10 +1011,7 @@ def match_resume_with_job(
                 preferred_technical_skills
         )
 
-        # ----------------------------------------------------
-        # Read LLM result
-        # ----------------------------------------------------
-
+        # Read AI result
         is_suitable = bool(
             match_result.get(
                 "is_suitable",
@@ -1311,65 +1054,85 @@ def match_resume_with_job(
             ""
         )
 
-        # ----------------------------------------------------
-        # Save match
-        # ----------------------------------------------------
-
+        # Check existing match
         cursor.execute(
             """
-            INSERT INTO job_matches (
-                resume_id,
-                job_id,
-                match_score,
-                explanation,
-                matched_skills,
-                missing_skills,
-                preferred_matched_skills
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-
-            ON CONFLICT(resume_id, job_id)
-            DO UPDATE SET
-                match_score =
-                    excluded.match_score,
-
-                explanation =
-                    excluded.explanation,
-
-                matched_skills =
-                    excluded.matched_skills,
-
-                missing_skills =
-                    excluded.missing_skills,
-
-                preferred_matched_skills =
-                    excluded.preferred_matched_skills
+            SELECT id
+            FROM job_matches
+            WHERE resume_id = ?
+            AND job_id = ?
             """,
             (
                 resume_id,
-                job_id,
-                0,
-                explanation,
-                json.dumps(matched),
-                json.dumps(missing),
-                json.dumps(matched_preferred)
+                job_id
             )
         )
+
+        existing_match = cursor.fetchone()
+
+        if existing_match:
+
+            cursor.execute(
+                """
+                UPDATE job_matches
+                SET
+                    match_score = ?,
+                    explanation = ?
+                WHERE id = ?
+                """,
+                (
+                    score,
+                    explanation,
+                    existing_match["id"]
+                )
+            )
+
+        else:
+
+            cursor.execute(
+                """
+                INSERT INTO job_matches (
+                    resume_id,
+                    job_id,
+                    match_score,
+                    explanation
+                )
+                VALUES (?, ?, ?, ?)
+                """,
+                (
+                    resume_id,
+                    job_id,
+                    score,
+                    explanation
+                )
+            )
 
         connection.commit()
 
         return {
+
             "resume_id": resume_id,
+
             "job_id": job_id,
+
             "job_title": job["title"],
+
             "match_score": score,
+
             "is_suitable": is_suitable,
+
             "suitability": suitability,
+
             "matched_skills": matched,
+
             "missing_skills": missing,
+
             "preferred_matched_skills":
                 matched_preferred,
-            "improvement_plan": improvement_plan,
+
+            "improvement_plan":
+                improvement_plan,
+
             "explanation": explanation
         }
 
@@ -1399,13 +1162,10 @@ def get_resume_matches(resume_id: int):
                 job_matches.job_id,
                 job_matches.match_score,
                 job_matches.explanation,
-                job_matches.matched_skills,
-                job_matches.missing_skills,
-                job_matches.preferred_matched_skills,
 
                 jobs.title,
                 jobs.company,
-                jobs.location,
+                jobs.description,
                 jobs.required_skills
 
             FROM job_matches
@@ -1428,29 +1188,15 @@ def get_resume_matches(resume_id: int):
 
             match_data = dict(match)
 
-            match_data["matched_skills"] = (
-                normalize_json_list(
-                    match_data[
-                        "matched_skills"
-                    ]
+            required_skills, preferred_skills = (
+                parse_job_skills(
+                    match_data.get("required_skills")
                 )
             )
 
-            match_data["missing_skills"] = (
-                normalize_json_list(
-                    match_data[
-                        "missing_skills"
-                    ]
-                )
-            )
+            match_data["required_skills"] = required_skills
 
-            match_data[
-                "preferred_matched_skills"
-            ] = normalize_json_list(
-                match_data.get(
-                    "preferred_matched_skills"
-                )
-            )
+            match_data["preferred_skills"] = preferred_skills
 
             result.append(match_data)
 
@@ -1477,19 +1223,10 @@ def get_career_advice(resume_id: int):
 
         cursor = connection.cursor()
 
-        # ----------------------------------------------------
-        # Get resume information
-        # ----------------------------------------------------
-
+        # Get resume
         cursor.execute(
             """
-            SELECT
-                extracted_text,
-                programming_languages,
-                technical_skills,
-                soft_skills,
-                strengths,
-                weaknesses
+            SELECT resume_text
             FROM resumes
             WHERE id = ?
             """,
@@ -1500,116 +1237,78 @@ def get_career_advice(resume_id: int):
 
         if resume is None:
 
-            return {
-                "error": "Resume not found"
-            }
+            raise HTTPException(
+                status_code=404,
+                detail="Resume not found"
+            )
 
-        programming_languages = (
-            normalize_json_list(
-                resume[
-                    "programming_languages"
-                ]
+        resume_text = resume["resume_text"] or ""
+
+        if not resume_text.strip():
+
+            raise HTTPException(
+                status_code=400,
+                detail="Resume text is empty"
+            )
+
+        # Analyze resume
+        analysis = analyze_resume(resume_text)
+
+        programming_languages = normalize_json_list(
+            analysis.get(
+                "programming_languages",
+                []
             )
         )
 
-        technical_skills = (
-            normalize_json_list(
-                resume[
-                    "technical_skills"
-                ]
+        technical_skills = normalize_json_list(
+            analysis.get(
+                "technical_skills",
+                []
             )
         )
 
-        soft_skills = (
-            normalize_json_list(
-                resume[
-                    "soft_skills"
-                ]
+        soft_skills = normalize_json_list(
+            analysis.get(
+                "soft_skills",
+                []
             )
         )
 
-        strengths = (
-            normalize_json_list(
-                resume[
-                    "strengths"
-                ]
+        strengths = normalize_json_list(
+            analysis.get(
+                "strengths",
+                []
             )
         )
 
-        weaknesses = (
-            normalize_json_list(
-                resume[
-                    "weaknesses"
-                ]
+        weaknesses = normalize_json_list(
+            analysis.get(
+                "weaknesses",
+                []
             )
         )
 
-        # ----------------------------------------------------
-        # Collect missing skills from matches
-        # ----------------------------------------------------
-
-        cursor.execute(
-            """
-            SELECT missing_skills
-            FROM job_matches
-            WHERE resume_id = ?
-            """,
-            (resume_id,)
-        )
-
-        matches = cursor.fetchall()
-
-        missing_skills = []
-
-        for match in matches:
-
-            skills = normalize_json_list(
-                match["missing_skills"]
-            )
-
-            missing_skills.extend(
-                skills
-            )
-
-        missing_skills = sorted(
-            set(missing_skills)
-        )
-
-        # ----------------------------------------------------
-        # Include programming languages
-        # in career advice context
-        # ----------------------------------------------------
-
-        all_technical_skills = (
-            programming_languages
-            + technical_skills
-        )
-
-        # ----------------------------------------------------
-        # Generate RAG Career Advice
-        # ----------------------------------------------------
-
+        # Generate Career Advice
         advice = generate_rag_career_advice(
-            resume_text=
-                resume["extracted_text"] or "",
 
-            technical_skills=
-                all_technical_skills,
+            resume_text=resume_text,
 
-            soft_skills=
-                soft_skills,
+            technical_skills=(
+                programming_languages + technical_skills
+            ),
 
-            strengths=
-                strengths,
+            soft_skills=soft_skills,
 
-            weaknesses=
-                weaknesses,
+            strengths=strengths,
 
-            missing_skills=
-                missing_skills
+            weaknesses=weaknesses,
+
+            missing_skills=[]
         )
 
         if isinstance(advice, dict):
+
             advice_text = advice.get(
                 "career_advice",
                 ""
@@ -1634,33 +1333,100 @@ def get_career_advice(resume_id: int):
                 "learning_roadmap",
                 []
             )
+
         else:
+
             advice_text = str(advice)
+
             skills_to_learn = []
+
             resume_improvements = []
+
             certifications = []
+
             learning_roadmap = []
 
         return {
+
             "resume_id": resume_id,
+
             "programming_languages":
                 programming_languages,
+
             "technical_skills":
                 technical_skills,
-            "career_advice": advice_text,
-            "skills_to_learn": skills_to_learn,
-            "resume_improvements": resume_improvements,
-            "certifications": certifications,
-            "learning_roadmap": learning_roadmap,
-            "missing_skills":
-                missing_skills
+
+            "soft_skills":
+                soft_skills,
+
+            "strengths":
+                strengths,
+
+            "weaknesses":
+                weaknesses,
+
+            "career_advice":
+                advice_text,
+
+            "skills_to_learn":
+                skills_to_learn,
+
+            "resume_improvements":
+                resume_improvements,
+
+            "certifications":
+                certifications,
+
+            "learning_roadmap":
+                learning_roadmap,
+
+            "missing_skills": []
         }
 
     finally:
 
         connection.close()
 
+# ============================================================
+# Get All Jobs
+# ============================================================
 
+@app.get("/jobs")
+def get_jobs():
+
+    connection = get_db_connection()
+
+    try:
+        cursor = connection.cursor()
+
+        cursor.execute("SELECT * FROM jobs ORDER BY id DESC")
+
+        jobs = cursor.fetchall()
+
+        result = []
+
+        for job in jobs:
+            job_data = dict(job)
+
+            required, preferred = parse_job_skills(
+                job_data.get("required_skills")
+            )
+
+            categories = parse_job_skill_categories(
+                job_data.get("required_skills")
+            )
+
+            job_data["required_skills"] = required
+            job_data["preferred_skills"] = preferred
+
+            job_data.update(categories)
+
+            result.append(job_data)
+
+        return {"jobs": result}
+
+    finally:
+        connection.close()
 # ============================================================
 # Get Single Job
 # ============================================================
@@ -1687,39 +1453,28 @@ def get_job(job_id: int):
 
         if job is None:
 
-            return {
-                "error": "Job not found"
-            }
+            raise HTTPException(
+                status_code=404,
+                detail="Job not found"
+            )
 
         job_data = dict(job)
 
         required_skills, preferred_skills = (
             parse_job_skills(
-                job_data.get(
-                    "required_skills"
-                )
+                job_data.get("required_skills")
             )
         )
 
-        categories = (
-            parse_job_skill_categories(
-                job_data.get(
-                    "required_skills"
-                )
-            )
+        categories = parse_job_skill_categories(
+            job_data.get("required_skills")
         )
 
-        job_data["required_skills"] = (
-            required_skills
-        )
+        job_data["required_skills"] = required_skills
 
-        job_data["preferred_skills"] = (
-            preferred_skills
-        )
+        job_data["preferred_skills"] = preferred_skills
 
-        job_data.update(
-            categories
-        )
+        job_data.update(categories)
 
         return job_data
 
@@ -1731,110 +1486,39 @@ def get_job(job_id: int):
 # ============================================================
 # Update Job
 # ============================================================
-
 @app.put("/jobs/{job_id}")
-def update_job(
-    job_id: int,
-    job: JobRequest
-):
+def update_job(job_id: int, job: JobRequest):
 
-    # Analyze updated job
     try:
         job_analysis = analyze_job(
             job_description=job.description,
             job_title=job.title
         )
-    except Exception as error:
-        print(f"Job AI analysis failed during update: {error}")
 
-        manual_required_skills = [
-            skill.strip()
-            for skill in job.required_skills.split(",")
-            if skill.strip()
-        ]
+    except Exception as error:
+        print(f"Job AI analysis failed: {error}")
 
         job_analysis = {
-            "required_skills": manual_required_skills,
-            "preferred_skills": [],
-            "required_programming_languages": [],
-            "required_technical_skills": manual_required_skills,
-            "preferred_programming_languages": [],
-            "preferred_technical_skills": []
+            "required_skills": [
+                skill.strip()
+                for skill in job.required_skills.split(",")
+                if skill.strip()
+            ],
+            "preferred_skills": []
         }
 
-    required_skills = normalize_json_list(
-        job_analysis.get(
-            "required_skills",
-            []
+    skills_data = json.dumps({
+        "required": normalize_json_list(
+            job_analysis.get("required_skills", [])
+        ),
+        "preferred": normalize_json_list(
+            job_analysis.get("preferred_skills", [])
         )
-    )
-
-    preferred_skills = normalize_json_list(
-        job_analysis.get(
-            "preferred_skills",
-            []
-        )
-    )
-
-    required_programming_languages = (
-        normalize_json_list(
-            job_analysis.get(
-                "required_programming_languages",
-                []
-            )
-        )
-    )
-
-    required_technical_skills = (
-        normalize_json_list(
-            job_analysis.get(
-                "required_technical_skills",
-                []
-            )
-        )
-    )
-
-    preferred_programming_languages = (
-        normalize_json_list(
-            job_analysis.get(
-                "preferred_programming_languages",
-                []
-            )
-        )
-    )
-
-    preferred_technical_skills = (
-        normalize_json_list(
-            job_analysis.get(
-                "preferred_technical_skills",
-                []
-            )
-        )
-    )
-
-    skills_data = json.dumps(
-        {
-            "required": required_skills,
-            "preferred": preferred_skills,
-
-            "required_programming_languages":
-                required_programming_languages,
-
-            "required_technical_skills":
-                required_technical_skills,
-
-            "preferred_programming_languages":
-                preferred_programming_languages,
-
-            "preferred_technical_skills":
-                preferred_technical_skills
-        }
-    )
+    })
 
     connection = get_db_connection()
 
     try:
-
         cursor = connection.cursor()
 
         cursor.execute(
@@ -1843,42 +1527,39 @@ def update_job(
             SET
                 title = ?,
                 company = ?,
-                location = ?,
                 description = ?,
                 required_skills = ?,
+                location = ?,
                 salary = ?,
                 job_type = ?
-
             WHERE id = ?
             """,
             (
                 job.title,
                 job.company,
-                job.location,
                 job.description,
                 skills_data,
+                job.location,
                 job.salary,
                 job.job_type,
                 job_id
             )
         )
 
-        connection.commit()
-
         if cursor.rowcount == 0:
+            raise HTTPException(
+                status_code=404,
+                detail="Job not found"
+            )
 
-            return {
-                "error": "Job not found"
-            }
+        connection.commit()
 
         return {
             "message": "Job updated successfully",
-            "job_id": job_id,
-            "analysis": job_analysis
+            "job_id": job_id
         }
 
     finally:
-
         connection.close()
 
 
@@ -1894,6 +1575,22 @@ def delete_job(job_id: int):
     try:
 
         cursor = connection.cursor()
+
+        cursor.execute(
+            """
+            SELECT id
+            FROM jobs
+            WHERE id = ?
+            """,
+            (job_id,)
+        )
+
+        if cursor.fetchone() is None:
+
+            raise HTTPException(
+                status_code=404,
+                detail="Job not found"
+            )
 
         cursor.execute(
             """
@@ -1913,12 +1610,6 @@ def delete_job(job_id: int):
 
         connection.commit()
 
-        if cursor.rowcount == 0:
-
-            return {
-                "error": "Job not found"
-            }
-
         return {
             "message": "Job deleted successfully",
             "job_id": job_id
@@ -1930,7 +1621,7 @@ def delete_job(job_id: int):
 
 
 # ============================================================
-# User Resumes
+# Get User Resumes
 # ============================================================
 
 @app.get("/resumes")
@@ -1947,20 +1638,21 @@ def get_user_resumes(user_id: int):
             SELECT
                 id,
                 user_id,
-                file_name,
-                summary,
-                created_at
+                filename,
+                summary
             FROM resumes
             WHERE user_id = ?
-            ORDER BY created_at DESC, id DESC
+            ORDER BY id DESC
             """,
             (user_id,)
         )
 
+        resumes = cursor.fetchall()
+
         return {
             "resumes": [
                 dict(resume)
-                for resume in cursor.fetchall()
+                for resume in resumes
             ]
         }
 
@@ -1968,6 +1660,10 @@ def get_user_resumes(user_id: int):
 
         connection.close()
 
+
+# ============================================================
+# Delete Resume
+# ============================================================
 
 @app.delete("/resume/{resume_id}")
 def delete_resume(
@@ -1983,20 +1679,24 @@ def delete_resume(
 
         cursor.execute(
             """
-            SELECT file_path
+            SELECT filename
             FROM resumes
             WHERE id = ?
             AND user_id = ?
             """,
-            (resume_id, user_id)
+            (
+                resume_id,
+                user_id
+            )
         )
 
         resume = cursor.fetchone()
 
         if resume is None:
+
             raise HTTPException(
                 status_code=404,
-                detail="Resume not found for this account."
+                detail="Resume not found"
             )
 
         cursor.execute(
@@ -2013,21 +1713,26 @@ def delete_resume(
             WHERE id = ?
             AND user_id = ?
             """,
-            (resume_id, user_id)
+            (
+                resume_id,
+                user_id
+            )
         )
 
         connection.commit()
 
-        file_path = resume["file_path"]
+        # Delete uploaded file safely
+        stored_file = (
+            UPLOAD_DIR / Path(resume["filename"]).name
+        ).resolve()
 
-        if file_path:
-            stored_file = Path(file_path)
+        if stored_file.parent == UPLOAD_DIR.resolve():
 
             if stored_file.exists():
                 stored_file.unlink()
 
         return {
-            "message": "Resume deleted successfully.",
+            "message": "Resume deleted successfully",
             "resume_id": resume_id
         }
 

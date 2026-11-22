@@ -13,9 +13,9 @@ import re
 
 from fastapi import APIRouter, HTTPException
 
-import coach
-from database import get_db_connection
-from models import (
+from . import coach
+from .database import get_db_connection
+from .models import (
     CoachChallengeRequest,
     CoachChatRequest,
     CoachChatResponse,

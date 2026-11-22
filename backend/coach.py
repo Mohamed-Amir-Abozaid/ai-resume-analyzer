@@ -23,7 +23,7 @@ import unicodedata
 import uuid
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeout
 
-from services import generate_text, parse_json
+from .services import generate_text, parse_json
 
 logger = logging.getLogger("coach")
 

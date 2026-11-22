@@ -1,4 +1,4 @@
-const API_URL = "http://127.0.0.1:8000";
+﻿const API_URL = "http://localhost:8000";
 
 const authShell = document.querySelector("#auth-shell");
 const appShell = document.querySelector("#app-shell");
@@ -299,7 +299,7 @@ function openAdvisor() {
   result.hidden = true;
   result.textContent = "";
   button.disabled = false;
-  button.textContent = "Get advice →";
+  button.textContent = "Get advice â†’";
 
   modal
     .querySelector("textarea")
@@ -421,7 +421,7 @@ async function requestCareerAdvice() {
     result.textContent = "Could not connect to the server.";
   } finally {
     button.disabled = false;
-    button.textContent = "Get advice →";
+    button.textContent = "Get advice â†’";
   }
 }
 
@@ -745,7 +745,7 @@ function renderResumes(resumes) {
   if (!resumes.length) {
     container.innerHTML = `
       <div class="empty-state">
-        <span class="empty-icon">◇</span>
+        <span class="empty-icon">â—‡</span>
         <h2>No resumes yet</h2>
         <p>Upload a PDF or DOCX to create your first analyzed resume.</p>
       </div>
@@ -772,7 +772,7 @@ function renderResumes(resumes) {
             View analysis
           </button>
           <button class="icon-button danger-button" aria-label="Delete resume" data-action="delete-resume" data-resume-id="${resume.id}">
-            ×
+            Ã—
           </button>
         </div>
       </article>
@@ -919,7 +919,7 @@ function renderJobs(jobs) {
       <div class="empty-state">
 
         <span class="empty-icon">
-          ▱
+          â–±
         </span>
 
         <h2>
@@ -1025,7 +1025,7 @@ function renderJobs(jobs) {
           data-action="edit-job"
           data-job-id="${job.id}"
         >
-          ✎
+          âœŽ
         </button>
 
         <button
@@ -1034,7 +1034,7 @@ function renderJobs(jobs) {
           data-action="delete-job"
           data-job-id="${job.id}"
         >
-          ×
+          Ã—
         </button>
 
       </div>
@@ -1793,7 +1793,7 @@ jobForm.addEventListener(
       showToast("Could not connect to the server.");
     } finally {
       submitButton.disabled = false;
-      submitButton.textContent = "Add job and analyze skills →";
+      submitButton.textContent = "Add job and analyze skills â†’";
     }
   }
 );
@@ -1809,7 +1809,7 @@ function displayMatchResult(data) {
     data.job_title || "Job match";
 
   document.querySelector("#job-detail-meta").textContent =
-    `Resume ${data.resume_id} · Job ${data.job_id}`;
+    `Resume ${data.resume_id} Â· Job ${data.job_id}`;
 
   const suitabilityStatus =
     document.querySelector("#suitability-status");
