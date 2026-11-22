@@ -37,7 +37,8 @@ const titles = {
   resumes: "My resumes",
   jobs: "Jobs",
   "job-detail": "Job match",
-  improvement: "Improve resume"
+  improvement: "Improve resume",
+  coach: "Career coach"
 };
 
 

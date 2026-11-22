@@ -21,9 +21,12 @@
   >
 
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="coach.css">
 </head>
 
 <body>
+
+  <a class="coach-skip-link" href="#main-content">Skip to main content</a>
 
   <!-- =========================
        AUTHENTICATION
@@ -355,6 +358,17 @@
           Improve resume
         </a>
 
+      
+
+        <a
+          class="nav-item"
+          href="#coach"
+          data-view="coach"
+        >
+          <span aria-hidden="true">✦</span>
+          Career coach
+        </a>
+
       </nav>
 
 
@@ -419,7 +433,7 @@
 
     <!-- MAIN -->
 
-    <main class="main-content">
+    <main class="main-content" id="main-content" tabindex="-1">
 
       <header class="topbar">
 
@@ -1192,6 +1206,108 @@
 
         </section>
 
+        <!-- =========================
+             CAREER & INTERVIEW COACH
+        ========================== -->
+
+        <section class="view" data-section="coach" aria-labelledby="coach-title">
+
+          <div class="standalone-heading">
+            <h1 id="coach-title" tabindex="-1">Career &amp; Interview Coach</h1>
+            <p>Get feedback on one CV bullet or one interview answer, and see exactly why the AI said it.</p>
+          </div>
+
+          <div class="coach-disclosure panel" role="note" aria-labelledby="coach-disclosure-title">
+            <h2 id="coach-disclosure-title">You are talking to an AI</h2>
+            <p>This coach is an AI assistant, not a recruiter. Its feedback is advice for practice. It does not make hiring decisions and it cannot guarantee or predict a job offer. Use fictional or redacted text only.</p>
+          </div>
+
+          <!-- Onboarding: 1 system does it, 2 co-pilot, 3 user does it -->
+          <div class="coach-onboarding panel" id="coach-onboarding" aria-labelledby="coach-onboarding-title">
+            <div class="coach-panel-head">
+              <h2 id="coach-onboarding-title">Quick start</h2>
+              <button type="button" class="coach-btn coach-btn-quiet" data-coach-action="onboarding-toggle" aria-expanded="true" aria-controls="coach-onboarding-body">Hide quick start</button>
+            </div>
+
+            <div id="coach-onboarding-body">
+              <fieldset class="coach-fieldset">
+                <legend>Which sounds most like you?</legend>
+                <div id="coach-personas" class="coach-radio-list"><p class="coach-note">Loading…</p></div>
+              </fieldset>
+
+              <ol class="coach-steps" id="coach-steps">
+                <li data-step="1">
+                  <span class="coach-step-state">Current step</span>
+                  <strong>The coach shows an example</strong>
+                  <span>Watch the coach give feedback on a fictional text. Nothing to type.</span>
+                  <button type="button" class="coach-btn" data-coach-action="onboarding-demo">Show me an example</button>
+                </li>
+                <li data-step="2">
+                  <span class="coach-step-state">Next</span>
+                  <strong>You try it, with guidance</strong>
+                  <span>Get a practice template, replace the brackets, and send it.</span>
+                  <button type="button" class="coach-btn" data-coach-action="onboarding-template">Fill a practice template</button>
+                </li>
+                <li data-step="3">
+                  <span class="coach-step-state">Next</span>
+                  <strong>You work on your own</strong>
+                  <span>Send your own text. Help stays under every reply and in this panel.</span>
+                </li>
+              </ol>
+              <p id="coach-step-status" class="coach-note" role="status"></p>
+            </div>
+          </div>
+
+          <!-- Conversation -->
+          <div class="coach-chat panel">
+            <div class="coach-panel-head">
+              <h2 id="coach-chat-title">Conversation</h2>
+              <button type="button" class="coach-btn coach-btn-quiet" data-coach-action="clear">Clear conversation</button>
+            </div>
+
+            <div id="coach-log" class="coach-log" role="log" aria-live="polite" aria-relevant="additions" aria-labelledby="coach-chat-title" tabindex="0"></div>
+
+            <p id="coach-status" class="coach-status" role="status" aria-live="polite" data-state="ready">Ready: loading the coach…</p>
+
+            <form id="coach-form" class="coach-form" novalidate>
+
+              <fieldset class="coach-fieldset" id="coach-focus">
+                <legend>Feedback focus</legend>
+                <div class="coach-radio-list coach-radio-row">
+                  <label class="coach-radio"><input type="radio" name="coach-focus" value="clarity" checked><span><strong>Clarity</strong> Is the point clear and concrete?</span></label>
+                  <label class="coach-radio"><input type="radio" name="coach-focus" value="relevance"><span><strong>Relevance</strong> Does it match the role?</span></label>
+                  <label class="coach-radio"><input type="radio" name="coach-focus" value="evidence"><span><strong>Evidence</strong> Are claims backed by detail?</span></label>
+                </div>
+                <p class="coach-note">Changing the focus re-runs your last message with the new focus.</p>
+              </fieldset>
+
+              <div class="coach-checks">
+                <label class="coach-check"><input type="checkbox" id="coach-plain"><span>Plain-language mode (shorter, simpler words)</span></label>
+                <label class="coach-check"><input type="checkbox" id="coach-always-why"><span>Show evidence and rubric automatically</span></label>
+              </div>
+
+              <details class="coach-extra">
+                <summary>Add an interview question or job requirement (optional)</summary>
+                <label for="coach-question">Interview question</label>
+                <input id="coach-question" type="text" maxlength="500" autocomplete="off">
+                <label for="coach-jd">Job requirement</label>
+                <textarea id="coach-jd" rows="3" maxlength="4000"></textarea>
+              </details>
+
+              <label for="coach-input" class="coach-input-label">Your message</label>
+              <textarea id="coach-input" rows="5" maxlength="4000" aria-describedby="coach-input-hint coach-count" placeholder="Paste one fictional CV bullet or one interview answer"></textarea>
+              <p id="coach-input-hint" class="coach-note">Use fictional or redacted text. Press Ctrl+Enter to send.</p>
+
+              <div class="coach-send-row">
+                <span id="coach-count" class="coach-note">0 / 4000 characters</span>
+                <button type="submit" id="coach-send" class="coach-send">Send</button>
+              </div>
+
+            </form>
+          </div>
+
+        </section>
+
       </div>
 
     </main>
@@ -1386,6 +1502,7 @@
 
 
   <script src="script.js"></script>
+  <script src="coach.js"></script>
 
 </body>
 
